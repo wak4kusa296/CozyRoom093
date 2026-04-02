@@ -1,6 +1,7 @@
 "use client";
 
 import { AppLoadingOverlay } from "@/app/components/app-loading-wave";
+import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
 import { FormEvent, useEffect, useState } from "react";
 
 type Letter = {
@@ -57,7 +58,8 @@ export function LetterSection({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug })
-    }).then(() => {
+    }).then((res) => {
+      redirectHomeIfUnauthorized(res.status);
       window.dispatchEvent(new CustomEvent("room-notifications-refresh"));
     });
   }, [open, slug, markThreadReadOnOpen]);
@@ -74,6 +76,7 @@ export function LetterSection({
         body: JSON.stringify({ body })
       });
 
+      redirectHomeIfUnauthorized(response.status);
       if (!response.ok) return;
 
       const data = (await response.json()) as { letters: Letter[] };

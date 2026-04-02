@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import { listContents } from "@/lib/content";
 import { normalizeThreadKey } from "@/lib/letters";
 import {
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }

@@ -80,11 +80,8 @@ export async function enforceGuestSessionActiveOrRedirect() {
   const { redirect } = await import("next/navigation");
   const session = await getSession();
   if (!session || session.role !== "guest") return;
-  const active = await isGuestCredentialActive(session.guestId);
-  if (!active) {
-    await clearSession();
-    redirect("/");
-  }
+  const active = await getSessionOrRevokeIfGuestInactive();
+  if (!active) redirect("/");
 }
 
 export function authenticateAdmin(secretInput: string) {
@@ -121,6 +118,22 @@ export async function getSession() {
   if (!token) return null;
 
   return decode(token);
+}
+
+/**
+ * セッションがあれば返す。ゲストは台帳上も有効なときだけ。
+ * 無効（削除済み等）なら Cookie を消して null。管理人はそのまま返す。
+ */
+export async function getSessionOrRevokeIfGuestInactive(): Promise<SessionPayload | null> {
+  const session = await getSession();
+  if (!session) return null;
+  if (session.role !== "guest") return session;
+  const active = await isGuestCredentialActive(session.guestId);
+  if (!active) {
+    await clearSession();
+    return null;
+  }
+  return session;
 }
 
 export async function requireGuestSession() {

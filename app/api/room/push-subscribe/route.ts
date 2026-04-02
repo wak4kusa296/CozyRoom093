@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import {
   removeGuestPushSubscription,
   upsertGuestPushSubscription,
@@ -16,7 +16,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }

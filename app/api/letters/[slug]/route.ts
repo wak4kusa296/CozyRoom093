@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import { appendLetter, getLetters, markGuestLetterNotificationsReadForThread } from "@/lib/letters";
 import { normalizeSlugParam } from "@/lib/content";
 import { pingAdminNotificationSubscribers, pingRoomNotificationSubscriber } from "@/lib/notification-push";
@@ -7,7 +7,7 @@ import { sendWebPushGuestLetterToAdmins } from "@/lib/web-push-guest-letter-to-a
 import { sendWebPushToGuestIds } from "@/lib/web-push-deliver";
 
 export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
 
   const { slug } = await context.params;
@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
 }
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
 
   const body = (await request.json()) as { body?: string };

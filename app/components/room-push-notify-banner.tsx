@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 
 const DEFAULT_DISMISS_KEY = "room-push-banner-dismissed";
@@ -63,11 +64,13 @@ export function RoomPushNotifyBanner({
       }
 
       if (sub && perm === "granted") {
-        await fetch("/api/room/push-subscribe", {
+        const postRes = await fetch("/api/room/push-subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sub.toJSON())
         });
+        redirectHomeIfUnauthorized(postRes.status);
+        if (!postRes.ok) return;
         setPhase("subscribed");
         return;
       }
