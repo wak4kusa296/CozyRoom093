@@ -5,7 +5,10 @@ import { assertContentMarkdownWritable, isPostgresMarkdownStore } from "@/lib/co
 import {
   dbDeleteRawMarkdown,
   dbGetRawMarkdown,
+  dbIsSlugDeleted,
   dbListContentSlugs,
+  dbListDeletedSlugs,
+  dbRecordDeletedSlug,
   dbUpsertRawMarkdown
 } from "@/lib/content-markdown-db";
 import { remark } from "remark";
@@ -35,14 +38,16 @@ async function listAllSlugsMerged(): Promise<string[]> {
   if (!isPostgresMarkdownStore()) {
     return disk.sort((a, b) => a.localeCompare(b, "ja"));
   }
-  const dbSlugs = await dbListContentSlugs();
-  const set = new Set([...disk, ...dbSlugs]);
+  const [dbSlugs, deleted] = await Promise.all([dbListContentSlugs(), dbListDeletedSlugs()]);
+  const diskVisible = disk.filter((s) => !deleted.has(s));
+  const set = new Set([...diskVisible, ...dbSlugs]);
   return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
 }
 
 async function loadRawMarkdown(slug: string): Promise<{ raw: string; updatedAt: string } | null> {
   const normalized = normalizeSlugParam(slug);
   if (isPostgresMarkdownStore()) {
+    if (await dbIsSlugDeleted(normalized)) return null;
     const fromDb = await dbGetRawMarkdown(normalized);
     if (fromDb) return fromDb;
   }
@@ -70,6 +75,7 @@ async function deleteMarkdownStorage(slug: string): Promise<void> {
   const normalized = normalizeSlugParam(slug);
   if (isPostgresMarkdownStore()) {
     await dbDeleteRawMarkdown(normalized);
+    await dbRecordDeletedSlug(normalized);
   }
   const filePath = path.join(CONTENT_DIR, `${normalized}.md`);
   await unlink(filePath).catch(() => undefined);
