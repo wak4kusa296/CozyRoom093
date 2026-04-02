@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [secret, setSecret] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [rows, setRows] = useState<HeartSummaryRow[] | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   async function loadSummary(showErrorMessage = true) {
     const response = await fetch("/api/admin/hearts");
