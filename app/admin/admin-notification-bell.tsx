@@ -327,11 +327,6 @@ export function AdminNotificationBell() {
         <span className="material-symbols-outlined" aria-hidden="true">
           notifications
         </span>
-        {unreadCount > 0 ? (
-          <span className="admin-notification-badge" aria-hidden="true">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        ) : null}
       </button>
 
       {mounted && panel ? createPortal(panel, document.body) : null}
