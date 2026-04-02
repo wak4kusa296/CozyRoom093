@@ -23,16 +23,17 @@ export type LetterThreadSummary = {
 export async function getLetters(slug: string, guestId: string) {
   const slugKey = normalizeThreadKey(slug);
   const guestKey = normalizeThreadKey(guestId);
+  const rawGuestId = guestId.trim();
   const pool = getDbPool();
   type Row = { sender: string; body: string; created_at: Date };
   const result = await pool.query<Row>(
     `
     SELECT sender, body, created_at
     FROM letters
-    WHERE slug = $1 AND guest_id = $2
+    WHERE slug = $1 AND guest_id IN ($2, $3)
     ORDER BY created_at ASC
     `,
-    [slugKey, guestKey]
+    [slugKey, guestKey, rawGuestId]
   );
   return result.rows.map((row: Row) => ({
     sender: row.sender,

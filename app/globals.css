@@ -3946,10 +3946,8 @@ blockquote blockquote::before {
       rgba(0, 91, 172, 1) 15px 25px,
       rgba(255, 255, 255, 1) 25px 30px
     ) border-box;
-  padding-top: 60px;
-  padding-right: 60px;
-  padding-bottom: 60px;
-  padding-left: 60px;
+  box-sizing: border-box;
+  padding: 16px;
 }
 
 .letter-modal-header {

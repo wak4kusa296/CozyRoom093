@@ -39,8 +39,24 @@ export function LetterSection({
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    setLetters(initialLetters);
+  }, [initialLetters]);
+
+  useEffect(() => {
     if (autoOpen) setOpen(true);
   }, [autoOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const guestQuery = guestId ? `?guest=${encodeURIComponent(guestId)}` : "";
+    void (async () => {
+      const res = await fetch(`/api/letters/${encodeURIComponent(slug)}${guestQuery}`, { cache: "no-store" });
+      redirectHomeIfUnauthorized(res.status);
+      if (!res.ok) return;
+      const data = (await res.json()) as { letters?: Letter[] };
+      setLetters(data.letters ?? []);
+    })();
+  }, [open, slug, guestId]);
 
   useEffect(() => {
     if (!open) return;
