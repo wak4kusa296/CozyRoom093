@@ -3,6 +3,8 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import { dbUpsertPushUploadBlob } from "@/lib/push-upload-blobs-db";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_BYTES = 2_500_000;
@@ -29,11 +31,16 @@ export async function POST(request: Request) {
   const ext =
     type === "image/jpeg" ? ".jpg" : type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".gif";
   const name = `${randomUUID()}${ext}`;
-  const dir = path.join(process.cwd(), "public", "uploads", "push");
   const buf = Buffer.from(await file.arrayBuffer());
+
   try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(path.join(dir, name), buf);
+    if (isPostgresMarkdownStore()) {
+      await dbUpsertPushUploadBlob(name, buf, type);
+    } else {
+      const dir = path.join(process.cwd(), "public", "uploads", "push");
+      await mkdir(dir, { recursive: true });
+      await writeFile(path.join(dir, name), buf);
+    }
   } catch (err) {
     console.error("[push-asset] write failed", err);
     return NextResponse.json({ ok: false, error: "write_failed" }, { status: 500 });

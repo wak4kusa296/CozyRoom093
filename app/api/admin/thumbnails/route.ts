@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import { dbDeleteThumbnailBlob, dbUpsertThumbnailBlob } from "@/lib/thumbnail-blobs-db";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 
 const THUMBNAILS_DIR = path.join(process.cwd(), "public", "thumbnails");
@@ -39,8 +41,12 @@ export async function POST(request: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
-    await mkdir(THUMBNAILS_DIR, { recursive: true });
-    await writeFile(path.join(THUMBNAILS_DIR, filename), buffer);
+    if (isPostgresMarkdownStore()) {
+      await dbUpsertThumbnailBlob(filename, buffer, file.type);
+    } else {
+      await mkdir(THUMBNAILS_DIR, { recursive: true });
+      await writeFile(path.join(THUMBNAILS_DIR, filename), buffer);
+    }
   } catch (err) {
     console.error("[thumbnails POST] write failed", err);
     return NextResponse.json({ error: "write_failed" }, { status: 500 });
@@ -61,7 +67,10 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    await unlink(path.join(THUMBNAILS_DIR, filename));
+    if (isPostgresMarkdownStore()) {
+      await dbDeleteThumbnailBlob(filename);
+    }
+    await unlink(path.join(THUMBNAILS_DIR, filename)).catch(() => undefined);
   } catch {
     // File may already be removed
   }
