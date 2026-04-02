@@ -115,9 +115,18 @@ export async function isGuestCredentialActive(guestIdInput: string): Promise<boo
       [id]
     );
     const row = result.rows[0];
-    if (!row) return true;
-    return row.is_active;
+    if (row) return row.is_active;
+
+    // 台帳に行がない = 削除済み、または env からまだ INSERT されていないだけ
+    const suppressed = await pool.query(`SELECT 1 FROM guest_env_sync_suppress WHERE guest_id = $1 LIMIT 1`, [id]);
+    if (suppressed.rowCount) return false;
+
+    const envGuest = parseGuestCredentialsEnv().find((g) => g.guestId === id);
+    return !!envGuest && envGuest.isActive;
   } catch {
+    // DB 利用不可時は env に載っている ID のみ継続を認める（従来の緩和）
+    const envGuest = parseGuestCredentialsEnv().find((g) => g.guestId === id);
+    if (envGuest) return envGuest.isActive;
     return true;
   }
 }
