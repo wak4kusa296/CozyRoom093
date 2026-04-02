@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "誰も知らない部屋",
     short_name: "誰も知らない部屋",
     description: "招待された人だけが入れる静かな部屋",
-    /** ホーム画面からの起動はルームへ。未ログインは app/room/page が / へリダイレクト */
-    start_url: "/room",
+    /** ホーム画面起動は /（未ログインのまま /room に行くとリダイレクトが発生し iOS で不安定になりやすい） */
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

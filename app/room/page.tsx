@@ -15,7 +15,7 @@ import { HeartButton } from "@/app/components/heart-button";
 import { MagazineBannerLink } from "@/app/components/magazine-banner-link";
 import { LetterSection } from "./[slug]/letter-section";
 
-/** セッション必須。PWA の start_url が /room のため未ログインは / へ */
+/** セッション必須。未ログインは / へ */
 export const dynamic = "force-dynamic";
 
 export default async function RoomPage({

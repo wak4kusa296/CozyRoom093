@@ -6,10 +6,11 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-/** インストール可能性の判定用に、ナビゲーションをそのままネットワークへ（オフラインキャッシュはしない） */
-self.addEventListener("fetch", (event) => {
-  event.respondWith(fetch(event.request));
-});
+/**
+ * ナビゲーションはフックしない（fetch で document を渡すと、iOS Safari で
+ * 「このページを読み込めません」やリダイレクト不具合が出ることがある）。
+ * Push のみ利用。オフラインキャッシュはしない。
+ */
 
 self.addEventListener("push", (event) => {
   let data = { title: "誰も知らない部屋", body: "", url: "/room" };
