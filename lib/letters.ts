@@ -142,6 +142,7 @@ export function adminLetterNotificationId(slugKey: string, guestKey: string, cre
 
 export async function listAdminLetterEventsForGuest(guestId: string): Promise<AdminLetterEvent[]> {
   const guestKey = normalizeThreadKey(guestId);
+  const rawGuestId = guestId.trim();
   const pool = getDbPool();
   const result = await pool.query<{
     slug: string;
@@ -153,10 +154,10 @@ export async function listAdminLetterEventsForGuest(guestId: string): Promise<Ad
     `
     SELECT slug, guest_id, sender, body, created_at
     FROM letters
-    WHERE guest_id = $1
+    WHERE guest_id IN ($1, $2)
     ORDER BY created_at ASC
     `,
-    [guestKey]
+    [guestKey, rawGuestId]
   );
 
   const events: AdminLetterEvent[] = [];

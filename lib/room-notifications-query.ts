@@ -127,8 +127,15 @@ export async function buildHistoryRoomNotifications(
     if (key.startsWith("adminLetter|")) {
       const parsed = parseAdminLetterNotificationId(key);
       if (!parsed) continue;
-      if (parsed.guestKey !== guestKeyExpected) continue;
-      const slug = slugBySlugKey.get(parsed.slugKey) ?? parsed.slugKey;
+      // DB の guest_id が正規化前の値でも、セッション側と同一人物なら履歴に出す
+      if (
+        normalizeThreadKey(parsed.guestKey) !== guestKeyExpected &&
+        parsed.guestKey.trim() !== guestId.trim()
+      ) {
+        continue;
+      }
+      const slugKeyNorm = normalizeThreadKey(parsed.slugKey);
+      const slug = slugBySlugKey.get(slugKeyNorm) ?? slugBySlugKey.get(parsed.slugKey) ?? parsed.slugKey;
       out.push({
         kind: "reply",
         id: key,

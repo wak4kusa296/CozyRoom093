@@ -12,7 +12,7 @@ import { buildHistoryRoomNotifications, buildUnreadRoomNotifications } from "@/l
 import type { RoomNotificationView } from "@/lib/room-notifications";
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
