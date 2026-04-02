@@ -6,13 +6,15 @@ import { pingAdminNotificationSubscribers, pingRoomNotificationSubscriber } from
 import { sendWebPushGuestLetterToAdmins } from "@/lib/web-push-guest-letter-to-admin";
 import { sendWebPushToGuestIds } from "@/lib/web-push-deliver";
 
-export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
+export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
 
+  const guestFromQuery = new URL(request.url).searchParams.get("guest") ?? "";
+  const targetGuestId = session.role === "admin" && guestFromQuery ? guestFromQuery : session.guestId;
   const { slug } = await context.params;
   const normalizedSlug = normalizeSlugParam(slug);
-  const letters = await getLetters(normalizedSlug, session.guestId);
+  const letters = await getLetters(normalizedSlug, targetGuestId);
   return NextResponse.json({ letters });
 }
 
