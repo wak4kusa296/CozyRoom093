@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "誰も知らない部屋",
     short_name: "誰も知らない部屋",
     description: "招待された人だけが入れる静かな部屋",
-    start_url: "/",
+    /** ホーム画面からの起動はルームへ。未ログインは app/room/page が / へリダイレクト */
+    start_url: "/room",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
