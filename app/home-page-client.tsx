@@ -13,6 +13,7 @@ export function HomePageClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [recoverModalOpen, setRecoverModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [entering, setEntering] = useState(false);
 
   useEffect(() => {
     if (!recoverModalOpen) return;
