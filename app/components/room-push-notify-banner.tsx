@@ -4,7 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 
-const DEFAULT_DISMISS_KEY = "room-push-banner-dismissed";
+/** ルームのプッシュ案内バナー「あとで」保存キー（通知センターの許可ボタン表示条件と共有） */
+export const ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY = "room-push-banner-dismissed";
+
+const DEFAULT_DISMISS_KEY = ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY;
+
+export const ROOM_PUSH_BANNER_DISMISSED_EVENT = "room-push-banner-dismissed";
 
 const DEFAULT_DESCRIPTION =
   "プッシュ通知を、スマホやPCの通知バーでも受け取れます（ルームのベル通知と同じ内容です）。";
@@ -94,6 +99,9 @@ export function RoomPushNotifyBanner({
     }
     setDismissed(true);
     setPhase("hidden");
+    if (typeof window !== "undefined" && dismissStorageKey === DEFAULT_DISMISS_KEY) {
+      window.dispatchEvent(new CustomEvent(ROOM_PUSH_BANNER_DISMISSED_EVENT));
+    }
   }, [dismissStorageKey]);
 
   if (!enabled || phase === "init" || phase === "no-vapid" || phase === "hidden" || dismissed) {
