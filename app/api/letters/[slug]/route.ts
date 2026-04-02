@@ -37,11 +37,15 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     pingRoomNotificationSubscriber(targetGuestId);
   } else {
     pingAdminNotificationSubscribers();
-    void sendWebPushGuestLetterToAdmins({
-      slug: normalizedSlug,
-      guestId: targetGuestId,
-      senderName: session.guestName
-    }).catch(() => {});
+    try {
+      await sendWebPushGuestLetterToAdmins({
+        slug: normalizedSlug,
+        guestId: targetGuestId,
+        senderName: session.guestName
+      });
+    } catch (e) {
+      console.error("[letters POST] web push to admins failed", e);
+    }
   }
 
   return NextResponse.json({ letters });
