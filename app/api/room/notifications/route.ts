@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import { listContents } from "@/lib/content";
 import { normalizeThreadKey } from "@/lib/letters";
+import { getGuestAccountStartedAtIso } from "@/lib/guest-credentials";
 import {
   ensureGuestNotificationBaseline,
   getGuestNotificationReadsMap,
@@ -20,7 +21,8 @@ export async function GET(request: Request) {
   const viewParam = new URL(request.url).searchParams.get("view");
   const view: RoomNotificationView = viewParam === "history" ? "history" : "unread";
 
-  await ensureGuestNotificationBaseline(session.guestId);
+  const accountStartedAtIso = await getGuestAccountStartedAtIso(session.guestId);
+  await ensureGuestNotificationBaseline(session.guestId, accountStartedAtIso);
   const reads = await getGuestNotificationReadsMap(session.guestId);
   const baselineIso = reads["__baseline_v1"];
 
@@ -33,13 +35,14 @@ export async function GET(request: Request) {
     session.guestId,
     reads,
     baselineIso,
-    slugBySlugKey
+    slugBySlugKey,
+    accountStartedAtIso
   );
   const unreadCount = unreadItems.length;
 
   const items =
     view === "history"
-      ? await buildHistoryRoomNotifications(session.guestId, reads, slugBySlugKey)
+      ? await buildHistoryRoomNotifications(session.guestId, reads, slugBySlugKey, accountStartedAtIso)
       : unreadItems;
 
   return NextResponse.json({

@@ -33,6 +33,24 @@ export async function listGuestCredentials() {
   return all.filter((item) => item.isActive);
 }
 
+/** 台帳登録時刻（通知の「アカウントより前」を切る基準）。行が無い・未移行時は null */
+export async function getGuestAccountStartedAtIso(guestIdInput: string): Promise<string | null> {
+  const guestId = guestIdInput.trim();
+  if (!guestId) return null;
+  try {
+    const pool = getDbPool();
+    const result = await pool.query<{ t: Date | null }>(
+      `SELECT COALESCE(created_at, updated_at) AS t FROM guest_credentials WHERE guest_id = $1`,
+      [guestId]
+    );
+    const row = result.rows[0];
+    if (!row?.t) return null;
+    return row.t.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 export async function listGuestCredentialsWithStatus() {
   const pool = getDbPool();
   const result = await pool.query<{
@@ -70,8 +88,8 @@ export async function syncGuestCredentialsFromEnv() {
 
       await client.query(
         `
-        INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
-        VALUES ($1, $2, $3, TRUE)
+        INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active, created_at)
+        VALUES ($1, $2, $3, TRUE, NOW())
         ON CONFLICT (guest_id) DO NOTHING
         `,
         [item.guestId, item.guestName, item.phrase]
@@ -173,8 +191,8 @@ export async function upsertGuestCredential(input: {
   const pool = getDbPool();
   await pool.query(
     `
-    INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
-    VALUES ($1, $2, $3, TRUE)
+    INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active, created_at)
+    VALUES ($1, $2, $3, TRUE, NOW())
     ON CONFLICT (guest_id)
     DO UPDATE SET
       guest_name = EXCLUDED.guest_name,

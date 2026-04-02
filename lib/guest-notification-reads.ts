@@ -1,6 +1,6 @@
 import { listBroadcastPushes, pushAppliesToGuest } from "@/lib/broadcast-pushes";
 import { listPublicContents } from "@/lib/content";
-import { listGuestCredentials } from "@/lib/guest-credentials";
+import { getGuestAccountStartedAtIso, listGuestCredentials } from "@/lib/guest-credentials";
 import { listAdminLetterEventsForGuest } from "@/lib/letters";
 import { getDbPool } from "@/lib/db";
 
@@ -76,9 +76,16 @@ export async function markContentNotificationReadAllGuests(slug: string): Promis
   }
 }
 
-export async function ensureGuestNotificationBaseline(guestId: string): Promise<void> {
+export async function ensureGuestNotificationBaseline(
+  guestId: string,
+  accountStartedAtIso?: string | null
+): Promise<void> {
   const map = await getGuestNotificationReadsMap(guestId);
   if (map["__baseline_v1"]) return;
+
+  const accountIso = accountStartedAtIso ?? (await getGuestAccountStartedAtIso(guestId));
+  const beforeAccount = (eventIso: string) =>
+    accountIso ? new Date(eventIso).getTime() < new Date(accountIso).getTime() : false;
 
   const now = new Date().toISOString();
   const publicItems = await listPublicContents();
@@ -87,15 +94,18 @@ export async function ensureGuestNotificationBaseline(guestId: string): Promise<
 
   const next: Record<string, string> = { ...map, __baseline_v1: now };
   for (const item of publicItems) {
+    const published = item.published_at ?? item.date;
+    if (beforeAccount(published)) continue;
     next[`content|${item.slug}`] = now;
   }
   for (const row of adminLetters) {
+    if (beforeAccount(row.createdAt)) continue;
     next[row.id] = now;
   }
   for (const p of broadcasts) {
-    if (pushAppliesToGuest(p, guestId)) {
-      next[`push|${p.id}`] = now;
-    }
+    if (!pushAppliesToGuest(p, guestId)) continue;
+    if (beforeAccount(p.sentAt)) continue;
+    next[`push|${p.id}`] = now;
   }
 
   const pool = getDbPool();

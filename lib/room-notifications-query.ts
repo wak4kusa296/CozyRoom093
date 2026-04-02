@@ -12,6 +12,12 @@ import type {
   RoomNotificationReplyItem
 } from "@/lib/room-notifications";
 
+/** アカウント登録より前のイベントは通知に含めない */
+function isBeforeGuestAccount(eventIso: string, accountStartedAtIso: string | null | undefined): boolean {
+  if (!accountStartedAtIso) return false;
+  return new Date(eventIso).getTime() < new Date(accountStartedAtIso).getTime();
+}
+
 function parseAdminLetterNotificationId(id: string): { slugKey: string; guestKey: string; createdAt: string } | null {
   if (!id.startsWith("adminLetter|")) return null;
   const rest = id.slice("adminLetter|".length);
@@ -47,6 +53,7 @@ export async function buildUnreadRoomNotifications(
   const adminLetters = await listAdminLetterEventsForGuest(guestId);
   const replyItems: RoomNotificationReplyItem[] = [];
   for (const row of adminLetters) {
+    if (isBeforeGuestAccount(row.createdAt, accountStartedAtIso)) continue;
     if (reads[row.id]) continue;
     if (baselineIso && row.createdAt <= baselineIso) continue;
     replyItems.push({
@@ -63,6 +70,7 @@ export async function buildUnreadRoomNotifications(
   const pushItems: RoomNotificationPushItem[] = [];
   for (const p of broadcasts) {
     if (!pushAppliesToGuest(p, guestId)) continue;
+    if (isBeforeGuestAccount(p.sentAt, accountStartedAtIso)) continue;
     const id = `push|${p.id}`;
     if (reads[id]) continue;
     if (baselineIso && p.sentAt <= baselineIso) continue;
@@ -87,7 +95,8 @@ export async function buildUnreadRoomNotifications(
 export async function buildHistoryRoomNotifications(
   guestId: string,
   reads: Record<string, string>,
-  slugBySlugKey: Map<string, string>
+  slugBySlugKey: Map<string, string>,
+  accountStartedAtIso?: string | null
 ): Promise<RoomNotificationItem[]> {
   const guestKeyExpected = normalizeThreadKey(guestId);
 
@@ -109,6 +118,7 @@ export async function buildHistoryRoomNotifications(
       if (!pushId) continue;
       const p = await getBroadcastPushById(pushId);
       if (!p || !pushAppliesToGuest(p, guestId)) continue;
+      if (isBeforeGuestAccount(p.sentAt, accountStartedAtIso)) continue;
       out.push({
         kind: "push",
         id: key,
@@ -136,6 +146,7 @@ export async function buildHistoryRoomNotifications(
       }
       const slugKeyNorm = normalizeThreadKey(parsed.slugKey);
       const slug = slugBySlugKey.get(slugKeyNorm) ?? slugBySlugKey.get(parsed.slugKey) ?? parsed.slugKey;
+      if (isBeforeGuestAccount(parsed.createdAt, accountStartedAtIso)) continue;
       out.push({
         kind: "reply",
         id: key,
