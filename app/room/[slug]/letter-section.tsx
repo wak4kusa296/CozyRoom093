@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoadingOverlay } from "@/app/components/app-loading-wave";
 import { FormEvent, useEffect, useState } from "react";
 
 type Letter = {
@@ -65,20 +66,22 @@ export function LetterSection({
     event.preventDefault();
     if (!body.trim()) return;
     setSending(true);
+    try {
+      const guestQuery = guestId ? `?guest=${encodeURIComponent(guestId)}` : "";
+      const response = await fetch(`/api/letters/${slug}${guestQuery}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body })
+      });
 
-    const guestQuery = guestId ? `?guest=${encodeURIComponent(guestId)}` : "";
-    const response = await fetch(`/api/letters/${slug}${guestQuery}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body })
-    });
+      if (!response.ok) return;
 
-    setSending(false);
-    if (!response.ok) return;
-
-    const data = (await response.json()) as { letters: Letter[] };
-    setLetters(data.letters);
-    setBody("");
+      const data = (await response.json()) as { letters: Letter[] };
+      setLetters(data.letters);
+      setBody("");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -89,6 +92,7 @@ export function LetterSection({
 
       {open ? (
         <div className="letter-modal-backdrop" onClick={() => setOpen(false)}>
+          {sending ? <AppLoadingOverlay label="投函中" zIndex={2200} /> : null}
           <section
             className="letters letter-modal"
             role="dialog"

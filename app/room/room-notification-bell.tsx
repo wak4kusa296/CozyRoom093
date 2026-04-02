@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { AppLoadingWave } from "@/app/components/app-loading-wave";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import type { RoomNotificationItem, RoomNotificationView } from "@/lib/room-notifications";
 import { shouldShowPermitPushButton } from "@/lib/push-permit-ui";
@@ -261,16 +262,7 @@ export function RoomNotificationBell() {
         </p>
       </header>
       {listLoading ? (
-        <div
-          className="room-notification-list-loading"
-          role="status"
-          aria-live="polite"
-          aria-label="通知を読み込み中"
-        >
-          <span className="room-notification-list-loading-dot" />
-          <span className="room-notification-list-loading-dot" />
-          <span className="room-notification-list-loading-dot" />
-        </div>
+        <AppLoadingWave className="room-notification-list-loading" label="通知を読み込み中" />
       ) : items.length === 0 ? (
         <p className="meta admin-notification-empty">
           {viewMode === "history" ? "過去の通知はありません。" : "通知はありません。"}

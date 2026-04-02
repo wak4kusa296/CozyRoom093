@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoadingOverlay } from "@/app/components/app-loading-wave";
 import { RoomBrand } from "@/app/components/room-brand";
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
@@ -41,23 +42,28 @@ export default function AdminPage() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setVerifying(true);
+    try {
+      const response = await fetch("/api/admin/enter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret })
+      });
 
-    const response = await fetch("/api/admin/enter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret })
-    });
+      if (response.ok) {
+        await loadSummary();
+        return;
+      }
 
-    if (response.ok) {
-      await loadSummary();
-      return;
+      setMessage("秘密の言葉が違うようです");
+    } finally {
+      setVerifying(false);
     }
-
-    setMessage("秘密の言葉が違うようです");
   }
 
   return (
     <main className="landing admin-page-wrap admin-home">
+      {verifying && !rows ? <AppLoadingOverlay label="確認中" /> : null}
       <RoomBrand variant="landing" />
       <section
         className={`card admin-page-card${!rows ? " admin-page-card--gate" : ""}`}

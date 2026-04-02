@@ -1,5 +1,6 @@
 "use client";
 
+import { AppLoadingOverlay } from "@/app/components/app-loading-wave";
 import { RoomBrand } from "@/app/components/room-brand";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
@@ -28,19 +29,23 @@ export function HomePageClient() {
   async function enterRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setEntering(true);
+    try {
+      const response = await fetch("/api/enter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phrase })
+      });
 
-    const response = await fetch("/api/enter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phrase })
-    });
+      if (response.ok) {
+        window.location.href = "/room";
+        return;
+      }
 
-    if (response.ok) {
-      window.location.href = "/room";
-      return;
+      setMessage("秘密の言葉が違うようです");
+    } finally {
+      setEntering(false);
     }
-
-    setMessage("秘密の言葉が違うようです");
   }
 
   async function sendRecovery(event: FormEvent<HTMLFormElement>) {
@@ -79,6 +84,8 @@ export function HomePageClient() {
 
   return (
     <main className="landing">
+      {entering ? <AppLoadingOverlay label="入室処理中" /> : null}
+      {sending ? <AppLoadingOverlay label="送信中" zIndex={2100} /> : null}
       <section className="card">
         <RoomBrand variant="landing" />
 
