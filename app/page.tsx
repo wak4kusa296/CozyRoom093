@@ -1,6 +1,7 @@
 "use client";
 
 import { RoomBrand } from "@/app/components/room-brand";
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 export default function HomePage() {
@@ -96,9 +97,14 @@ export default function HomePage() {
           <button type="submit">入室する</button>
         </form>
 
-        <button type="button" className="text-link" onClick={() => setRecoverModalOpen(true)}>
-          秘密の言葉を忘れた方へ
-        </button>
+        <nav className="landing-secondary-actions" aria-label="その他">
+          <button type="button" className="text-link" onClick={() => setRecoverModalOpen(true)}>
+            秘密の言葉を忘れた方へ
+          </button>
+          <Link href="/admin" className="text-link">
+            管理人向け
+          </Link>
+        </nav>
 
         {message && <p className="message">{message}</p>}
       </section>
