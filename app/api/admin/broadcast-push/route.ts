@@ -4,7 +4,7 @@ import { appendBroadcastPush } from "@/lib/broadcast-pushes";
 import type { GuestCredential } from "@/lib/guest-credentials";
 import { listGuestCredentials } from "@/lib/guest-credentials";
 import { pingAllRoomNotificationSubscribers, pingRoomNotificationSubscribers } from "@/lib/notification-push";
-import { sendWebPushForBroadcast } from "@/lib/web-push-broadcast";
+import { sendWebPushForBroadcast, type WebPushBroadcastResult } from "@/lib/web-push-broadcast";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -58,11 +58,20 @@ export async function POST(request: Request) {
       pingRoomNotificationSubscribers(row.guestIds);
     }
 
-    void sendWebPushForBroadcast(row).catch(() => {
-      /* Web Push 未設定・送信失敗はブロードキャスト自体は成功扱い */
-    });
+    let webPush: WebPushBroadcastResult;
+    try {
+      webPush = await sendWebPushForBroadcast(row);
+    } catch (e) {
+      console.error("[broadcast-push] web push error", e);
+      webPush = {
+        skippedReason: null,
+        targetCount: 0,
+        sentCount: 0,
+        failureCount: 0
+      };
+    }
 
-    return NextResponse.json({ ok: true, id: row.id, sentAt: row.sentAt });
+    return NextResponse.json({ ok: true, id: row.id, sentAt: row.sentAt, webPush });
   } catch (e) {
     if (e instanceof Error) {
       if (e.message === "title_and_body_required") {

@@ -85,6 +85,13 @@ export async function listSubscriptionsForGuests(guestIds: string[]): Promise<
   return out;
 }
 
+export async function countPushSubscriptions(): Promise<number> {
+  const pool = getDbPool();
+  const result = await pool.query<{ c: number }>(`SELECT COUNT(*)::int AS c FROM push_subscriptions`);
+  const n = result.rows[0]?.c;
+  return typeof n === "number" && Number.isFinite(n) ? n : 0;
+}
+
 export async function listAllPushSubscriptions(): Promise<
   Array<{ guestId: string; subscription: PushSubscriptionJSON }>
 > {

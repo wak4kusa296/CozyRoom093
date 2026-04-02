@@ -125,7 +125,16 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
           linkLabel: linkLabel.trim() || undefined
         })
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        webPush?: {
+          skippedReason: "vapid_not_configured" | null;
+          targetCount: number;
+          sentCount: number;
+          failureCount: number;
+        };
+      };
       if (!res.ok || !data.ok) {
         if (data.error === "invalid_body") setMessage("タイトルと本文が必要です。");
         else if (data.error === "lead_required") setMessage("リード文が必要です。");
@@ -134,7 +143,24 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
         else setMessage("送信に失敗しました。");
         return;
       }
-      setMessage("送信しました。");
+      let detail = "";
+      const wp = data.webPush;
+      if (wp) {
+        if (wp.skippedReason === "vapid_not_configured") {
+          detail =
+            " Web Push は VAPID 鍵（NEXT_PUBLIC_VAPID_PUBLIC_KEY と VAPID_PRIVATE_KEY）が未設定のため送れませんでした。Vercel の環境変数を確認してください。";
+        } else if (wp.targetCount === 0) {
+          detail =
+            " Web Push: 購読端末がありません。ゲストがルームで「通知を許可する」を押すと届きます。";
+        } else if (wp.sentCount > 0 && wp.failureCount === 0) {
+          detail = ` Web Push: ${wp.sentCount} 件送信しました。`;
+        } else if (wp.sentCount > 0 && wp.failureCount > 0) {
+          detail = ` Web Push: ${wp.sentCount} 件成功、${wp.failureCount} 件失敗しました。`;
+        } else if (wp.failureCount > 0) {
+          detail = ` Web Push: ${wp.failureCount} 件失敗しました（購読の期限切れやネットワークを確認してください）。`;
+        }
+      }
+      setMessage(`送信しました。${detail}`);
       setTitle("");
       setLead("");
       setBody("");
