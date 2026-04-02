@@ -1,0 +1,379 @@
+.inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  overflow: visible;
+}
+
+.hint {
+  margin: 0 0 20px;
+  max-width: 20rem;
+  text-align: center;
+  color: rgba(22, 22, 22, 0.78);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.buttonShell {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 記事・letters 共通: 枠なしのフラット（旧 actionLimit と同じ土台） */
+.action {
+  --heart-soft: #fff5f7;
+  --heart-mid: #f9a8c9;
+  --heart-deep: #c41e4a;
+  --heart-max: #ff667d;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  margin-top: 28px;
+  padding: 36px 0;
+  border: none;
+  border-radius: 8px;
+  background: unset;
+  background-color: unset;
+  border-image: none;
+}
+
+.actionThanked {
+  border: none;
+  border-image: none;
+}
+
+.label {
+  margin: 10px 0 0;
+  max-width: 16rem;
+  text-align: center;
+  border: none;
+  border-width: 0;
+  border-color: transparent;
+  border-image: none;
+  outline: none;
+  color: rgba(22, 22, 22, 1);
+  font-weight: 700;
+  transition: color 0.25s ease, transform 0.2s ease;
+}
+
+.actionThanked .label {
+  color: #ff667d;
+  font-weight: 700;
+}
+
+.actionLimit .label {
+  color: var(--heart-max);
+  font-weight: 700;
+}
+
+.actionError .label {
+  color: rgba(22, 22, 22, 0.55);
+  font-weight: 700;
+}
+
+.button {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  min-width: 76px;
+  min-height: 76px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  isolation: isolate;
+  background: transparent;
+  box-shadow: none !important;
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.25s ease;
+  animation: none;
+}
+
+.buttonStack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  line-height: 0;
+}
+
+/* 小ハートがメインアイコンの周りを周回（土星の輪）— --orbit-n はタップ数（JS で指定） */
+.orbitLayer {
+  --orbit-r: 31.5px;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.orbitSpinner {
+  position: absolute;
+  inset: 0;
+  animation: heart-orbit-spin 8.4s linear infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.orbitArm {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  transform: rotate(calc(var(--orbit-i) * 360deg / var(--orbit-n)))
+    translateY(calc(-1 * var(--orbit-r)));
+}
+
+.orbitMi {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: none;
+  outline: none;
+  flex-shrink: 0;
+  transform-origin: center center;
+  animation: heart-orbit-upright 8.4s linear infinite;
+}
+
+.orbitMi path {
+  border: none;
+  outline: none;
+}
+
+@keyframes heart-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes heart-orbit-upright {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.buttonIconBreathe {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  transform-origin: center center;
+  animation-name: heart-icon-breathe;
+  animation-duration: 3.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.buttonIconWrap {
+  display: grid;
+  place-items: center;
+}
+
+.buttonIconMi {
+  display: block;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: none;
+  outline: none;
+  color: inherit;
+  transition: filter 0.2s ease;
+  filter: none;
+}
+
+.buttonIconMi path,
+.particleMi path {
+  border-style: none;
+  border-width: 0;
+  border-color: transparent;
+  border-image: none;
+  outline: none;
+}
+
+.button:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none !important;
+  filter: none;
+}
+
+.button:hover:not(:disabled) .buttonIconMi {
+  filter: brightness(1.06);
+}
+
+@keyframes heart-icon-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.065);
+  }
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.12s;
+}
+
+.button:focus-visible {
+  outline: 2px solid hsl(345deg 72% 48%);
+  outline-offset: 4px;
+}
+
+.button:disabled:not(.buttonSending) {
+  cursor: default;
+  animation: none;
+  filter: grayscale(0.12) saturate(0.9);
+  opacity: 0.92;
+}
+
+.button.buttonSending:disabled {
+  animation: heart-button-sending 0.9s ease-in-out infinite;
+  filter: none;
+  opacity: 1;
+}
+
+.buttonThanked {
+  background: transparent;
+  box-shadow: none !important;
+  animation: none;
+}
+
+.buttonLimit,
+.buttonError {
+  background: transparent;
+  box-shadow: none !important;
+  animation: none;
+}
+
+.buttonTapLock {
+  cursor: default;
+  animation: none;
+}
+
+/* ロック時もハート色は濁らせない（disabled のグレースケールを上書き） */
+.button.buttonTapLock:disabled:not(.buttonSending) {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.buttonTapLock .buttonIconMi,
+.buttonTapLock .orbitMi {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+@keyframes heart-button-sending {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:not(.buttonSending) {
+    animation: none !important;
+  }
+
+  .button.buttonSending:disabled {
+    animation: none !important;
+  }
+
+  .button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .button:hover:not(:disabled) .buttonIconMi {
+    filter: none;
+  }
+
+  .buttonIconBreathe {
+    animation: none !important;
+  }
+
+  .orbitSpinner {
+    animation: none !important;
+  }
+
+  .orbitMi {
+    animation: none !important;
+  }
+
+  .particleRoot {
+    display: none !important;
+  }
+}
+
+.particleRoot {
+  position: absolute;
+  left: 38px;
+  top: 38px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation-name: heart-particle-float;
+  animation-duration: var(--float-dur, 1.85s);
+  animation-delay: var(--float-delay, 0ms);
+  animation-timing-function: cubic-bezier(0.18, 0.72, 0.22, 1);
+  animation-fill-mode: forwards;
+}
+
+.particleMi {
+  display: block;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: none;
+  outline: none;
+  color: inherit;
+  filter: none !important;
+}
+
+@keyframes heart-particle-float {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--r)) scale(0.55);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.98;
+  }
+  55% {
+    opacity: 0.88;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--r)) scale(0.78);
+    opacity: 0;
+  }
+}

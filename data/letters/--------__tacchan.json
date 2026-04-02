@@ -1,0 +1,27 @@
+[
+  {
+    "sender": "tacchan",
+    "body": "Hello",
+    "createdAt": "2026-03-31T19:29:59.090Z"
+  },
+  {
+    "sender": "管理者",
+    "body": "こんにちは",
+    "createdAt": "2026-04-01T00:09:09.475Z"
+  },
+  {
+    "sender": "tacchan",
+    "body": "こんにちは",
+    "createdAt": "2026-04-01T05:40:09.184Z"
+  },
+  {
+    "sender": "管理者",
+    "body": "Hello",
+    "createdAt": "2026-04-01T05:43:23.025Z"
+  },
+  {
+    "sender": "管理者",
+    "body": "こんにちは",
+    "createdAt": "2026-04-01T05:46:53.495Z"
+  }
+]

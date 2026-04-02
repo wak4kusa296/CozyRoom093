@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nobody_room_db
+    environment:
+      POSTGRES_DB: nobody_room
+      POSTGRES_USER: nobody
+      POSTGRES_PASSWORD: nobody_local_password
+      TZ: Asia/Tokyo
+    ports:
+      - "5433:5432"
+    volumes:
+      - nobody_room_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nobody -d nobody_room"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nobody_room_db_data:
