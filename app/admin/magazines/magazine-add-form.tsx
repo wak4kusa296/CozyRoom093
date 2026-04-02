@@ -1,5 +1,6 @@
 "use client";
 
+import { readAdminJson } from "@/lib/admin-read-json";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
 
@@ -59,14 +60,30 @@ export function MagazineAddForm({ addMagazineAction, updateMagazineThumbnailActi
           const uploadFd = new FormData();
           uploadFd.set("file", file);
           uploadFd.set("prefix", `mag-${result.id}`);
-          const res = await fetch("/api/admin/thumbnails", { method: "POST", body: uploadFd });
-          const json = await res.json();
-          if (json.filename) {
+          const res = await fetch("/api/admin/thumbnails", {
+            method: "POST",
+            credentials: "include",
+            body: uploadFd
+          });
+          const json = await readAdminJson<{ filename?: string; error?: string }>(res);
+          if (!res.ok || !json.filename) {
+            setError(
+              res.status === 401
+                ? "管理者のセッションが切れています。ページを再読み込みしてください。"
+                : json.error === "file too large"
+                  ? "サムネイルは5MB以下にしてください。"
+                  : json.error === "write_failed"
+                    ? "サーバーに保存できませんでした。本番ホストでは書き込み不可のことがあります。"
+                    : "サムネイルのアップロードに失敗しました。"
+            );
+          } else {
             const actionFd = new FormData();
             actionFd.set("id", result.id);
             actionFd.set("thumbnail", json.filename);
             await updateMagazineThumbnailAction(actionFd);
           }
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "サムネイルのアップロードに失敗しました。");
         } finally {
           setThumbUploading(false);
           if (fileInput) fileInput.value = "";

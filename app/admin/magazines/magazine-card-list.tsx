@@ -1,5 +1,6 @@
 "use client";
 
+import { readAdminJson } from "@/lib/admin-read-json";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type MagazineItem = {
@@ -32,6 +33,7 @@ export function MagazineCardList({
 }: MagazineCardListProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [thumbUploading, setThumbUploading] = useState(false);
+  const [thumbError, setThumbError] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const [managedItems, setManagedItems] = useState<Array<{ slug: string; title: string }>>([]);
   const [draggingSlug, setDraggingSlug] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export function MagazineCardList({
     setManagerOpen(false);
     setActiveId(null);
     setUsageDeltaMap(new Map());
+    setThumbError(null);
   }
 
   function toOrderKey(items: Array<{ slug: string; title: string }>) {
@@ -300,17 +303,29 @@ export function MagazineCardList({
                       disabled={thumbUploading}
                       onClick={async () => {
                         if (!activeMagazine.thumbnail) return;
+                        setThumbError(null);
                         setThumbUploading(true);
                         try {
-                          await fetch("/api/admin/thumbnails", {
+                          const del = await fetch("/api/admin/thumbnails", {
                             method: "DELETE",
+                            credentials: "include",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ filename: activeMagazine.thumbnail })
                           });
+                          if (!del.ok) {
+                            setThumbError(
+                              del.status === 401
+                                ? "管理者のセッションが切れています。"
+                                : "サムネイルの削除に失敗しました。"
+                            );
+                            return;
+                          }
                           const actionFd = new FormData();
                           actionFd.set("id", activeMagazine.id);
                           actionFd.set("thumbnail", "");
                           await updateMagazineThumbnailAction(actionFd);
+                        } catch (e) {
+                          setThumbError(e instanceof Error ? e.message : "サムネイルの削除に失敗しました。");
                         } finally {
                           setThumbUploading(false);
                         }
@@ -329,11 +344,13 @@ export function MagazineCardList({
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     if (!file || !activeMagazine) return;
+                    setThumbError(null);
                     setThumbUploading(true);
                     try {
                       if (activeMagazine.thumbnail) {
                         await fetch("/api/admin/thumbnails", {
                           method: "DELETE",
+                          credentials: "include",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ filename: activeMagazine.thumbnail })
                         });
@@ -341,14 +358,30 @@ export function MagazineCardList({
                       const fd = new FormData();
                       fd.set("file", file);
                       fd.set("prefix", `mag-${activeMagazine.id}`);
-                      const res = await fetch("/api/admin/thumbnails", { method: "POST", body: fd });
-                      const json = await res.json();
-                      if (json.filename) {
-                        const actionFd = new FormData();
-                        actionFd.set("id", activeMagazine.id);
-                        actionFd.set("thumbnail", json.filename);
-                        await updateMagazineThumbnailAction(actionFd);
+                      const res = await fetch("/api/admin/thumbnails", {
+                        method: "POST",
+                        credentials: "include",
+                        body: fd
+                      });
+                      const json = await readAdminJson<{ filename?: string; error?: string }>(res);
+                      if (!res.ok || !json.filename) {
+                        setThumbError(
+                          res.status === 401
+                            ? "管理者のセッションが切れています。ページを再読み込みしてください。"
+                            : json.error === "file too large"
+                              ? "画像は5MB以下にしてください。"
+                              : json.error === "write_failed"
+                                ? "サーバーに保存できませんでした。本番ではホストの書き込み制限があることがあります。"
+                                : "サムネイルのアップロードに失敗しました。"
+                        );
+                        return;
                       }
+                      const actionFd = new FormData();
+                      actionFd.set("id", activeMagazine.id);
+                      actionFd.set("thumbnail", json.filename);
+                      await updateMagazineThumbnailAction(actionFd);
+                    } catch (e) {
+                      setThumbError(e instanceof Error ? e.message : "サムネイルのアップロードに失敗しました。");
                     } finally {
                       setThumbUploading(false);
                       event.target.value = "";
@@ -356,6 +389,11 @@ export function MagazineCardList({
                   }}
                 />
               </div>
+              {thumbError ? (
+                <p className="message" role="alert">
+                  {thumbError}
+                </p>
+              ) : null}
             </section>
 
             <button

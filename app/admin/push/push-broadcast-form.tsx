@@ -1,5 +1,6 @@
 "use client";
 
+import { readAdminJson } from "@/lib/admin-read-json";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
@@ -77,15 +78,17 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
     try {
       const fd = new FormData();
       fd.set("file", file);
-      const res = await fetch("/api/admin/push-asset", { method: "POST", body: fd });
-      const data = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+      const res = await fetch("/api/admin/push-asset", { method: "POST", credentials: "include", body: fd });
+      const data = await readAdminJson<{ ok?: boolean; url?: string; error?: string }>(res);
       if (!res.ok || !data.ok || !data.url) {
         setMessage(
           data.error === "too_large"
             ? "画像は2.5MB以下にしてください。"
             : data.error === "bad_type"
               ? "JPEG / PNG / WebP / GIF のみです。"
-              : "画像のアップロードに失敗しました。"
+              : data.error === "write_failed"
+                ? "サーバーに保存できませんでした。本番ホストでは書き込み不可のことがあります。"
+                : "画像のアップロードに失敗しました。"
         );
         return;
       }
