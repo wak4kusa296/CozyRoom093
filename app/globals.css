@@ -5323,8 +5323,8 @@ blockquote blockquote::before {
 .admin-delete-guest-button {
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: fit-content;
+  height: fit-content;
   padding: 0;
   margin: 0;
   border: none;
@@ -5359,9 +5359,9 @@ blockquote blockquote::before {
 }
 
 .admin-table thead .admin-table-col-actions {
-  width: 52px;
-  max-width: 52px;
-  min-width: 52px;
+  width: fit-content;
+  max-width: none;
+  min-width: 0;
   white-space: nowrap;
   text-align: center;
   box-sizing: border-box;
@@ -5370,9 +5370,9 @@ blockquote blockquote::before {
 .admin-table .admin-table-cell-actions {
   text-align: center;
   vertical-align: middle;
-  width: 52px;
-  max-width: 52px;
-  min-width: 52px;
+  width: fit-content;
+  max-width: none;
+  min-width: 0;
   padding-left: 4px;
   padding-right: 4px;
   box-sizing: border-box;
@@ -5392,7 +5392,7 @@ blockquote blockquote::before {
 }
 
 /* タブレット以上: 列幅を固定し、カード内に収める */
-/* 固定列(状態48px+削除52px)を除いた幅を ID:表示名:合言葉 = 14:22:38 に配分（余白が列末に乗らないよう calc） */
+/* 固定列(状態48px+削除は内容幅)を除いた幅を ID:表示名:合言葉 = 14:22:38 に配分（余白が列末に乗らないよう calc・削除列は概ね52px前後を想定） */
 @media (min-width: 721px) {
   .admin-ledger-user-table {
     table-layout: fixed;
@@ -5418,9 +5418,9 @@ blockquote blockquote::before {
   }
 
   .admin-ledger-col-actions {
-    width: 52px;
-    min-width: 52px;
-    max-width: 52px;
+    width: fit-content;
+    min-width: 0;
+    max-width: none;
   }
 
   .admin-ledger-user-table th:nth-child(4),
@@ -5453,9 +5453,9 @@ blockquote blockquote::before {
 
   .admin-ledger-user-table th:nth-child(5),
   .admin-ledger-user-table td:nth-child(5) {
-    width: 52px;
-    min-width: 52px;
-    max-width: 52px;
+    width: fit-content;
+    min-width: 0;
+    max-width: none;
     padding-left: 4px;
     padding-right: 4px;
     box-sizing: border-box;
@@ -5489,6 +5489,7 @@ blockquote blockquote::before {
   .admin-ledger-user-table td:nth-child(2) .admin-phrase-line > span:first-child {
     flex: 1 1 auto;
     min-width: 0;
+    width: 100%;
     word-break: normal;
     overflow-wrap: anywhere;
     line-break: strict;
@@ -5759,8 +5760,36 @@ blockquote blockquote::before {
     grid-template-columns: 1fr;
   }
 
+  /* 管理画面: 子要素の minmax で幅が子の合計を超えて横スクロール／はみ出ししがちなのを抑える */
+  main.landing.admin-page-wrap {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+    box-sizing: border-box;
+  }
+
   .admin-page-card {
     padding: 16px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .admin-table-wrap,
+  .admin-table-wrap-plain {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+    box-sizing: border-box;
+  }
+
+  .admin-table.admin-table-mobile-card {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    border-collapse: separate;
+    box-sizing: border-box;
   }
 
   .admin-upload-modal {
@@ -5917,9 +5946,10 @@ blockquote blockquote::before {
 
   .admin-table-mobile-card tbody td:nth-child(5),
   .admin-table-mobile-cards tbody td:nth-child(5) {
-    flex: 0 0 52px;
-    max-width: 52px;
-    min-width: 52px;
+    flex: 0 0 auto;
+    width: fit-content;
+    max-width: none;
+    min-width: 0;
     justify-content: center;
   }
 
@@ -5964,6 +5994,7 @@ blockquote blockquote::before {
 
   .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2) .admin-phrase-line > :first-child,
   .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-phrase-line > :first-child {
+    width: 100%;
     overflow: visible;
     text-overflow: unset;
     white-space: normal;
@@ -5996,6 +6027,124 @@ blockquote blockquote::before {
     border-radius: 8px;
   }
 
+  /*
+   * 台帳（ユーザー管理）: flex 一行だと ID・合言葉で幅が足りない → Grid で領域を分ける。
+   * 狭い端末では 1 列に積む（下の max-width: 480px）。
+   */
+  .admin-ledger-user-table.admin-table-mobile-card tbody tr,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "ledger-id ledger-id"
+      "ledger-name ledger-phrase"
+      "ledger-status ledger-actions";
+    column-gap: 10px;
+    row-gap: 12px;
+    align-items: start;
+    justify-items: stretch;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(1),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(1) {
+    grid-area: ledger-id;
+    font-size: 12px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) {
+    grid-area: ledger-name;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) {
+    grid-area: ledger-phrase;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) {
+    grid-area: ledger-status;
+    justify-self: start;
+    align-self: end;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
+    grid-area: ledger-actions;
+    justify-self: end;
+    align-self: end;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4) .admin-inline-form.admin-inline-form-compact,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) .admin-inline-form.admin-inline-form-compact {
+    margin-inline: 0;
+    justify-content: flex-start;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5) .admin-delete-guest-form,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) .admin-delete-guest-form {
+    margin-inline: 0;
+    justify-content: flex-end;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-phrase-text,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-phrase-text {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-phrase-line,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-phrase-line {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    align-content: flex-start;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-phrase-line > :first-child,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-phrase-line > :first-child {
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-ledger-user-table.admin-table-mobile-card tbody tr,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody tr {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "ledger-id ledger-id"
+      "ledger-name ledger-name"
+      "ledger-phrase ledger-phrase"
+      "ledger-status ledger-actions";
+    row-gap: 10px;
+    align-items: start;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) {
+    justify-self: start;
+    align-self: end;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
+    justify-self: end;
+    align-self: end;
+  }
 }
 
 @media (max-width: 420px) {
