@@ -43,8 +43,8 @@ try {
   for (const item of items) {
     await client.query(
       `
-      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active, created_at)
-      VALUES ($1, $2, $3, TRUE, NOW())
+      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
+      VALUES ($1, $2, $3, TRUE)
       ON CONFLICT (guest_id)
       DO UPDATE SET
         guest_name = EXCLUDED.guest_name,
