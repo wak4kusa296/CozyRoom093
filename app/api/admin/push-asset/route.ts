@@ -30,9 +30,14 @@ export async function POST(request: Request) {
     type === "image/jpeg" ? ".jpg" : type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".gif";
   const name = `${randomUUID()}${ext}`;
   const dir = path.join(process.cwd(), "public", "uploads", "push");
-  await mkdir(dir, { recursive: true });
   const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, name), buf);
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, name), buf);
+  } catch (err) {
+    console.error("[push-asset] write failed", err);
+    return NextResponse.json({ ok: false, error: "write_failed" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, url: `/uploads/push/${name}` });
 }

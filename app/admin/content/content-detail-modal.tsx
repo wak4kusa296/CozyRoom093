@@ -1,5 +1,6 @@
 "use client";
 
+import { readAdminJson } from "@/lib/admin-read-json";
 import { useEffect, useId, useRef, useState } from "react";
 import { MagazineMultiToggle } from "@/app/admin/content/magazine-multi-toggle";
 
@@ -52,6 +53,7 @@ export function ContentDetailModal({
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [replaceFileName, setReplaceFileName] = useState("");
   const [thumbUploading, setThumbUploading] = useState(false);
+  const [thumbError, setThumbError] = useState<string | null>(null);
   const replaceFileInputId = useId();
   const titleInputId = useId();
   const thumbFileInputId = useId();
@@ -61,6 +63,7 @@ export function ContentDetailModal({
     setOpen(false);
     setReplaceOpen(false);
     setReplaceFileName("");
+    setThumbError(null);
   }
 
   useEffect(() => {
@@ -186,17 +189,29 @@ export function ContentDetailModal({
                       disabled={thumbUploading}
                       onClick={async () => {
                         if (!item.thumbnail) return;
+                        setThumbError(null);
                         setThumbUploading(true);
                         try {
-                          await fetch("/api/admin/thumbnails", {
+                          const del = await fetch("/api/admin/thumbnails", {
                             method: "DELETE",
+                            credentials: "include",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ filename: item.thumbnail })
                           });
+                          if (!del.ok) {
+                            setThumbError(
+                              del.status === 401
+                                ? "管理者のセッションが切れています。"
+                                : "サムネイルの削除に失敗しました。"
+                            );
+                            return;
+                          }
                           const actionFd = new FormData();
                           actionFd.set("slug", item.slug);
                           actionFd.set("thumbnail", "");
                           await updateContentThumbnailAction(actionFd);
+                        } catch (e) {
+                          setThumbError(e instanceof Error ? e.message : "サムネイルの削除に失敗しました。");
                         } finally {
                           setThumbUploading(false);
                         }
@@ -215,11 +230,13 @@ export function ContentDetailModal({
                   onChange={async (event) => {
                     const file = event.target.files?.[0];
                     if (!file) return;
+                    setThumbError(null);
                     setThumbUploading(true);
                     try {
                       if (item.thumbnail) {
                         await fetch("/api/admin/thumbnails", {
                           method: "DELETE",
+                          credentials: "include",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ filename: item.thumbnail })
                         });
@@ -227,14 +244,30 @@ export function ContentDetailModal({
                       const fd = new FormData();
                       fd.set("file", file);
                       fd.set("prefix", `content-${item.slug}`);
-                      const res = await fetch("/api/admin/thumbnails", { method: "POST", body: fd });
-                      const json = await res.json();
-                      if (json.filename) {
-                        const actionFd = new FormData();
-                        actionFd.set("slug", item.slug);
-                        actionFd.set("thumbnail", json.filename);
-                        await updateContentThumbnailAction(actionFd);
+                      const res = await fetch("/api/admin/thumbnails", {
+                        method: "POST",
+                        credentials: "include",
+                        body: fd
+                      });
+                      const json = await readAdminJson<{ filename?: string; error?: string }>(res);
+                      if (!res.ok || !json.filename) {
+                        setThumbError(
+                          res.status === 401
+                            ? "管理者のセッションが切れています。ページを再読み込みしてください。"
+                            : json.error === "file too large"
+                              ? "画像は5MB以下にしてください。"
+                              : json.error === "write_failed"
+                                ? "サーバーに保存できませんでした。本番ではホストの書き込み制限があることがあります。"
+                                : "サムネイルのアップロードに失敗しました。"
+                        );
+                        return;
                       }
+                      const actionFd = new FormData();
+                      actionFd.set("slug", item.slug);
+                      actionFd.set("thumbnail", json.filename);
+                      await updateContentThumbnailAction(actionFd);
+                    } catch (e) {
+                      setThumbError(e instanceof Error ? e.message : "サムネイルのアップロードに失敗しました。");
                     } finally {
                       setThumbUploading(false);
                       event.target.value = "";
@@ -242,6 +275,11 @@ export function ContentDetailModal({
                   }}
                 />
               </div>
+              {thumbError ? (
+                <p className="message" role="alert">
+                  {thumbError}
+                </p>
+              ) : null}
             </section>
 
             <dl className="admin-content-detail-grid">

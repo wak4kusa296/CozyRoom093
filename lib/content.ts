@@ -1,6 +1,13 @@
-import { readdir, readFile, stat, writeFile } from "fs/promises";
+import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
 import matter from "gray-matter";
+import { assertContentMarkdownWritable, isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import {
+  dbDeleteRawMarkdown,
+  dbGetRawMarkdown,
+  dbListContentSlugs,
+  dbUpsertRawMarkdown
+} from "@/lib/content-markdown-db";
 import { remark } from "remark";
 import remarkGfm from "remark-gfm";
 import remarkHtml from "remark-html";
@@ -13,6 +20,60 @@ import type { ContentDetail, ContentMeta } from "./content-shared";
 const CONTENT_DIR = path.join(process.cwd(), "content");
 const HASHTAG_PATTERN = /(^|[\s　])#([^\s#]+)/g;
 const INLINE_HASHTAG_PATTERN = /#([^\s#<]+)/g;
+
+async function listSlugsFromDisk(): Promise<string[]> {
+  try {
+    const files = await readdir(CONTENT_DIR);
+    return files.filter((f) => f.endsWith(".md")).map((f) => f.replace(/\.md$/, ""));
+  } catch {
+    return [];
+  }
+}
+
+async function listAllSlugsMerged(): Promise<string[]> {
+  const disk = await listSlugsFromDisk();
+  if (!isPostgresMarkdownStore()) {
+    return disk.sort((a, b) => a.localeCompare(b, "ja"));
+  }
+  const dbSlugs = await dbListContentSlugs();
+  const set = new Set([...disk, ...dbSlugs]);
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+async function loadRawMarkdown(slug: string): Promise<{ raw: string; updatedAt: string } | null> {
+  const normalized = normalizeSlugParam(slug);
+  if (isPostgresMarkdownStore()) {
+    const fromDb = await dbGetRawMarkdown(normalized);
+    if (fromDb) return fromDb;
+  }
+  const filePath = path.join(CONTENT_DIR, `${normalized}.md`);
+  try {
+    const [raw, info] = await Promise.all([readFile(filePath, "utf8"), stat(filePath)]);
+    return { raw, updatedAt: info.mtime.toISOString() };
+  } catch {
+    return null;
+  }
+}
+
+async function persistMarkdown(slug: string, raw: string): Promise<void> {
+  const normalized = normalizeSlugParam(slug);
+  if (isPostgresMarkdownStore()) {
+    await dbUpsertRawMarkdown(normalized, raw);
+    return;
+  }
+  await mkdir(CONTENT_DIR, { recursive: true });
+  const filePath = path.join(CONTENT_DIR, `${normalized}.md`);
+  await writeFile(filePath, raw, "utf8");
+}
+
+async function deleteMarkdownStorage(slug: string): Promise<void> {
+  const normalized = normalizeSlugParam(slug);
+  if (isPostgresMarkdownStore()) {
+    await dbDeleteRawMarkdown(normalized);
+  }
+  const filePath = path.join(CONTENT_DIR, `${normalized}.md`);
+  await unlink(filePath).catch(() => undefined);
+}
 
 export function normalizeSlugParam(slug: string) {
   try {
@@ -200,20 +261,17 @@ function normalizeMeta(slug: string, data: Record<string, unknown>, content = ""
 }
 
 export async function listContents() {
-  const files = await readdir(CONTENT_DIR);
-  const markdownFiles = files.filter((file) => file.endsWith(".md"));
-
+  const slugs = await listAllSlugsMerged();
   const list = await Promise.all(
-    markdownFiles.map(async (file) => {
-      const slug = file.replace(/\.md$/, "");
-      const filePath = path.join(CONTENT_DIR, file);
-      const [raw, info] = await Promise.all([readFile(filePath, "utf8"), stat(filePath)]);
-      const parsed = matter(raw);
-      return normalizeMeta(slug, parsed.data as Record<string, unknown>, parsed.content, info.mtime.toISOString());
+    slugs.map(async (slug) => {
+      const loaded = await loadRawMarkdown(slug);
+      if (!loaded) return null;
+      const parsed = matter(loaded.raw);
+      return normalizeMeta(slug, parsed.data as Record<string, unknown>, parsed.content, loaded.updatedAt);
     })
   );
 
-  return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return list.filter((x): x is ContentMeta => x != null).sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 export async function listPublicContents() {
@@ -226,39 +284,36 @@ export async function getContentBySlug(slug: string) {
   const candidates = Array.from(new Set([normalizedSlug, slug]));
 
   let resolvedSlug: string | null = null;
-  let resolvedPath: string | null = null;
-  let raw: string | null = null;
+  let loaded: { raw: string; updatedAt: string } | null = null;
   for (const candidate of candidates) {
-    try {
-      const filePath = path.join(CONTENT_DIR, `${candidate}.md`);
-      raw = await readFile(filePath, "utf8");
-      resolvedSlug = candidate;
-      resolvedPath = filePath;
+    const result = await loadRawMarkdown(candidate);
+    if (result) {
+      resolvedSlug = normalizeSlugParam(candidate);
+      loaded = result;
       break;
-    } catch {
-      // Try next candidate.
     }
   }
 
-  if (!raw || !resolvedSlug) {
+  if (!loaded || !resolvedSlug) {
     throw new Error(`Content not found: ${slug}`);
   }
 
-  const info = await stat(resolvedPath!);
-  const parsed = matter(raw);
+  const parsed = matter(loaded.raw);
   const rawHtml = String(await remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).process(parsed.content));
   const html = convertHashtagParagraphs(rawHtml);
 
   return {
-    ...normalizeMeta(resolvedSlug, parsed.data as Record<string, unknown>, parsed.content, info.mtime.toISOString()),
+    ...normalizeMeta(resolvedSlug, parsed.data as Record<string, unknown>, parsed.content, loaded.updatedAt),
     html
   } satisfies ContentDetail;
 }
 
 export async function setContentStatus(slug: string, status: "public" | "private") {
+  assertContentMarkdownWritable();
   const normalizedSlug = normalizeSlugParam(slug);
-  const filePath = path.join(CONTENT_DIR, `${normalizedSlug}.md`);
-  const raw = await readFile(filePath, "utf8");
+  const loaded = await loadRawMarkdown(normalizedSlug);
+  if (!loaded) throw new Error(`Content not found: ${slug}`);
+  const raw = loaded.raw;
   const parsed = matter(raw);
   const previousStatus = parsed.data.status === "public" ? "public" : "private";
   const currentPublishedAt = parsed.data.published_at ? String(parsed.data.published_at) : undefined;
@@ -276,7 +331,7 @@ export async function setContentStatus(slug: string, status: "public" | "private
   }
 
   const nextRaw = matter.stringify(parsed.content, nextData);
-  await writeFile(filePath, nextRaw, "utf8");
+  await persistMarkdown(normalizedSlug, nextRaw);
 
   const becamePublic = status === "public" && previousStatus !== "public";
   if (becamePublic) {
@@ -292,9 +347,11 @@ export async function setContentStatus(slug: string, status: "public" | "private
 }
 
 export async function setContentTitle(slug: string, title: string) {
+  assertContentMarkdownWritable();
   const normalizedSlug = normalizeSlugParam(slug);
-  const filePath = path.join(CONTENT_DIR, `${normalizedSlug}.md`);
-  const raw = await readFile(filePath, "utf8");
+  const loaded = await loadRawMarkdown(normalizedSlug);
+  if (!loaded) throw new Error(`Content not found: ${slug}`);
+  const raw = loaded.raw;
   const parsed = matter(raw);
   const trimmedTitle = title.trim();
   if (!trimmedTitle) return;
@@ -304,13 +361,15 @@ export async function setContentTitle(slug: string, title: string) {
     title: trimmedTitle
   };
   const nextRaw = matter.stringify(parsed.content, nextData);
-  await writeFile(filePath, nextRaw, "utf8");
+  await persistMarkdown(normalizedSlug, nextRaw);
 }
 
 export async function setContentMagazines(slug: string, magazines: string[]) {
+  assertContentMarkdownWritable();
   const normalizedSlug = normalizeSlugParam(slug);
-  const filePath = path.join(CONTENT_DIR, `${normalizedSlug}.md`);
-  const raw = await readFile(filePath, "utf8");
+  const loaded = await loadRawMarkdown(normalizedSlug);
+  if (!loaded) throw new Error(`Content not found: ${slug}`);
+  const raw = loaded.raw;
   const parsed = matter(raw);
   const normalizedMagazines = normalizeMagazines(magazines);
   const nextData: Record<string, unknown> = {
@@ -325,13 +384,15 @@ export async function setContentMagazines(slug: string, magazines: string[]) {
   delete nextData.magazine;
 
   const nextRaw = matter.stringify(parsed.content, nextData);
-  await writeFile(filePath, nextRaw, "utf8");
+  await persistMarkdown(normalizedSlug, nextRaw);
 }
 
 export async function setContentThumbnail(slug: string, thumbnail: string) {
+  assertContentMarkdownWritable();
   const normalizedSlug = normalizeSlugParam(slug);
-  const filePath = path.join(CONTENT_DIR, `${normalizedSlug}.md`);
-  const raw = await readFile(filePath, "utf8");
+  const loaded = await loadRawMarkdown(normalizedSlug);
+  if (!loaded) throw new Error(`Content not found: ${slug}`);
+  const raw = loaded.raw;
   const parsed = matter(raw);
   const nextData: Record<string, unknown> = { ...parsed.data };
 
@@ -342,14 +403,18 @@ export async function setContentThumbnail(slug: string, thumbnail: string) {
   }
 
   const nextRaw = matter.stringify(parsed.content, nextData);
-  await writeFile(filePath, nextRaw, "utf8");
+  await persistMarkdown(normalizedSlug, nextRaw);
 }
 
-async function rewriteContentFileMagazines(
-  filePath: string,
+async function rewriteContentMagazinesForSlug(
+  slug: string,
   update: (currentMagazines: string[]) => string[]
 ) {
-  const raw = await readFile(filePath, "utf8");
+  assertContentMarkdownWritable();
+  const normalizedSlug = normalizeSlugParam(slug);
+  const loaded = await loadRawMarkdown(normalizedSlug);
+  if (!loaded) return;
+  const raw = loaded.raw;
   const parsed = matter(raw);
   const currentMagazines = parseMagazinesFromFrontmatter(
     (parsed.data as Record<string, unknown>).magazines ?? (parsed.data as Record<string, unknown>).magazine
@@ -368,21 +433,20 @@ async function rewriteContentFileMagazines(
 
   const nextRaw = matter.stringify(parsed.content, nextData);
   if (nextRaw !== raw) {
-    await writeFile(filePath, nextRaw, "utf8");
+    await persistMarkdown(normalizedSlug, nextRaw);
   }
 }
 
 export async function renameMagazineInAllContents(fromName: string, toName: string) {
+  assertContentMarkdownWritable();
   const normalizedFrom = fromName.trim();
   const normalizedTo = toName.trim();
   if (!normalizedFrom || !normalizedTo || normalizedFrom === normalizedTo) return;
 
-  const files = await readdir(CONTENT_DIR);
-  const markdownFiles = files.filter((file) => file.endsWith(".md"));
+  const slugs = await listAllSlugsMerged();
   await Promise.all(
-    markdownFiles.map(async (file) => {
-      const filePath = path.join(CONTENT_DIR, file);
-      await rewriteContentFileMagazines(filePath, (current) =>
+    slugs.map(async (slug) => {
+      await rewriteContentMagazinesForSlug(slug, (current) =>
         current.map((magazine) => (magazine === normalizedFrom ? normalizedTo : magazine))
       );
     })
@@ -390,17 +454,70 @@ export async function renameMagazineInAllContents(fromName: string, toName: stri
 }
 
 export async function removeMagazineFromAllContents(name: string) {
+  assertContentMarkdownWritable();
   const normalizedName = name.trim();
   if (!normalizedName) return;
 
-  const files = await readdir(CONTENT_DIR);
-  const markdownFiles = files.filter((file) => file.endsWith(".md"));
+  const slugs = await listAllSlugsMerged();
   await Promise.all(
-    markdownFiles.map(async (file) => {
-      const filePath = path.join(CONTENT_DIR, file);
-      await rewriteContentFileMagazines(filePath, (current) => current.filter((magazine) => magazine !== normalizedName));
+    slugs.map(async (slug) => {
+      await rewriteContentMagazinesForSlug(slug, (current) =>
+        current.filter((magazine) => magazine !== normalizedName)
+      );
     })
   );
+}
+
+function normalizeFileStem(value: string) {
+  return value
+    .replace(/\.md$/i, "")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+async function stemExistsInStorage(stem: string): Promise<boolean> {
+  if (isPostgresMarkdownStore()) {
+    const row = await dbGetRawMarkdown(stem);
+    if (row) return true;
+  }
+  try {
+    await access(path.join(CONTENT_DIR, `${stem}.md`));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function resolveUniqueMarkdownStem(originalFileName: string): Promise<string> {
+  const safeStem = normalizeFileStem(originalFileName.replace(/\.md$/i, "")) || `article-${Date.now()}`;
+  let candidate = safeStem;
+  let suffix = 1;
+  while (await stemExistsInStorage(candidate)) {
+    candidate = `${safeStem}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+/** 管理画面からの新規 .md アップロード（Postgres またはローカル content/） */
+export async function createMarkdownUpload(originalFileName: string, bytes: Buffer): Promise<string> {
+  assertContentMarkdownWritable();
+  const slug = await resolveUniqueMarkdownStem(originalFileName);
+  await persistMarkdown(slug, bytes.toString("utf8"));
+  return slug;
+}
+
+export async function replaceMarkdownFileContent(slug: string, bytes: Buffer): Promise<void> {
+  assertContentMarkdownWritable();
+  const normalizedSlug = normalizeSlugParam(slug);
+  await persistMarkdown(normalizedSlug, bytes.toString("utf8"));
+}
+
+export async function deleteStoredMarkdown(slug: string): Promise<void> {
+  assertContentMarkdownWritable();
+  await deleteMarkdownStorage(slug);
 }
 
 export function listMagazineSummaries(items: ContentMeta[]) {

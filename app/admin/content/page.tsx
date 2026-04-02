@@ -1,14 +1,22 @@
 import { AdminNav } from "@/app/admin/_nav";
 import { requireAdminSession } from "@/app/admin/_auth";
-import { listContents, setContentMagazines, setContentStatus, setContentThumbnail, setContentTitle } from "@/lib/content";
+import { assertContentMarkdownWritable, isContentMarkdownPersistable } from "@/lib/content-fs-env";
+import {
+  createMarkdownUpload,
+  deleteStoredMarkdown,
+  listContents,
+  replaceMarkdownFileContent,
+  setContentMagazines,
+  setContentStatus,
+  setContentThumbnail,
+  setContentTitle
+} from "@/lib/content";
 import { listHeartSummaries } from "@/lib/hearts";
 import { listMagazines } from "@/lib/magazines";
 import { getMagazineContentOrders, setMagazineContentOrder } from "@/lib/magazine-content-orders";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { ContentUploadModal } from "@/app/admin/content/content-upload-modal";
-import { access, mkdir, unlink, writeFile } from "fs/promises";
-import path from "path";
 import { redirect } from "next/navigation";
 import { ContentDetailModal } from "@/app/admin/content/content-detail-modal";
 import { listLetterThreads, normalizeThreadKey } from "@/lib/letters";
@@ -29,46 +37,17 @@ function getPublishedDisplay(status: "public" | "private", publishedAt?: string)
   return formatSiteDateTime(publishedAt);
 }
 
-function normalizeFileStem(value: string) {
-  return value
-    .replace(/\.md$/i, "")
-    .trim()
-    .replace(/[\\/:*?"<>|]/g, "-")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
-
-async function resolveUniqueMdFileName(stem: string) {
-  const safeStem = normalizeFileStem(stem) || `article-${Date.now()}`;
-  const contentDir = path.join(process.cwd(), "content");
-  await mkdir(contentDir, { recursive: true });
-
-  let candidate = `${safeStem}.md`;
-  let suffix = 1;
-  while (true) {
-    const filePath = path.join(contentDir, candidate);
-    try {
-      await access(filePath);
-      candidate = `${safeStem}-${suffix}.md`;
-      suffix += 1;
-    } catch {
-      return filePath;
-    }
-  }
-}
-
 async function uploadContentAction(formData: FormData) {
   "use server";
 
   await requireAdminSession();
+  assertContentMarkdownWritable();
   const file = formData.get("contentFile");
   if (!(file instanceof File) || file.size === 0) return;
   if (!file.name.toLowerCase().endsWith(".md")) return;
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const targetPath = await resolveUniqueMdFileName(file.name);
-  await writeFile(targetPath, bytes);
-  const uploadedSlug = path.basename(targetPath, ".md");
+  const uploadedSlug = await createMarkdownUpload(file.name, bytes);
 
   revalidatePath("/admin/content");
   revalidatePath("/room");
@@ -116,6 +95,7 @@ async function deleteContentAction(formData: FormData) {
   "use server";
 
   await requireAdminSession();
+  assertContentMarkdownWritable();
   const slug = String(formData.get("slug") ?? "").trim();
   if (!slug) return;
 
@@ -130,8 +110,7 @@ async function deleteContentAction(formData: FormData) {
       })
     );
   }
-  const targetPath = path.join(process.cwd(), "content", `${normalizedSlug}.md`);
-  await unlink(targetPath).catch(() => undefined);
+  await deleteStoredMarkdown(normalizedSlug);
 
   revalidatePath("/admin/content");
   revalidatePath("/room");
@@ -143,6 +122,7 @@ async function replaceContentFileAction(formData: FormData) {
   "use server";
 
   await requireAdminSession();
+  assertContentMarkdownWritable();
   const slug = String(formData.get("slug") ?? "").trim();
   const file = formData.get("contentFile");
   if (!slug) return;
@@ -150,9 +130,8 @@ async function replaceContentFileAction(formData: FormData) {
   if (!file.name.toLowerCase().endsWith(".md")) return;
 
   const normalizedSlug = slug.endsWith(".md") ? slug.replace(/\.md$/i, "") : slug;
-  const targetPath = path.join(process.cwd(), "content", `${normalizedSlug}.md`);
   const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(targetPath, bytes);
+  await replaceMarkdownFileContent(normalizedSlug, bytes);
 
   revalidatePath("/admin/content");
   revalidatePath(`/admin/content/setup/${encodeURIComponent(normalizedSlug)}`);
@@ -222,6 +201,13 @@ export default async function AdminContentPage() {
           <h1>記事管理</h1>
           <p className="lead">各記事の公開状態、マガジンへの登録、反応数、Markdown を確認・更新できます。</p>
         </div>
+        {!isContentMarkdownPersistable() ? (
+          <p className="message" role="status">
+            記事の保存先がありません。Vercel 本番では環境変数{" "}
+            <code>CONTENT_MARKDOWN_STORE=postgres</code>（DB マイグレーション 005 適用済み）を設定するか、リポジトリの{" "}
+            <code>content/</code> を Git からデプロイするか、ディスク書き込み可能なサーバーでホストしてください。
+          </p>
+        ) : null}
         <AdminNav />
         <ContentUploadModal action={uploadContentAction} />
         {magazines.length === 0 ? (

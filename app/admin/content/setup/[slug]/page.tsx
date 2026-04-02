@@ -1,5 +1,6 @@
 import { AdminNav } from "@/app/admin/_nav";
 import { requireAdminSession } from "@/app/admin/_auth";
+import { isContentMarkdownPersistable } from "@/lib/content-fs-env";
 import { getContentBySlug, normalizeSlugParam, setContentMagazines, setContentStatus, setContentTitle } from "@/lib/content";
 import { listMagazines } from "@/lib/magazines";
 import { revalidatePath } from "next/cache";
@@ -55,6 +56,12 @@ export default async function AdminContentSetupPage({
           <h1>アップロード後の初期設定</h1>
           <p className="lead">タイトル、公開状態、登録マガジンを設定してください。</p>
         </div>
+        {!isContentMarkdownPersistable() ? (
+          <p className="message" role="status">
+            記事を保存できません。<code>CONTENT_MARKDOWN_STORE=postgres</code> を設定するか、Git で{" "}
+            <code>content/</code> の frontmatter を編集してデプロイしてください。
+          </p>
+        ) : null}
         <AdminNav />
 
         <section className="stack admin-panel">

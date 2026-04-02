@@ -38,8 +38,13 @@ export async function POST(request: NextRequest) {
   const filename = `${prefix}-${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  await mkdir(THUMBNAILS_DIR, { recursive: true });
-  await writeFile(path.join(THUMBNAILS_DIR, filename), buffer);
+  try {
+    await mkdir(THUMBNAILS_DIR, { recursive: true });
+    await writeFile(path.join(THUMBNAILS_DIR, filename), buffer);
+  } catch (err) {
+    console.error("[thumbnails POST] write failed", err);
+    return NextResponse.json({ error: "write_failed" }, { status: 500 });
+  }
 
   return NextResponse.json({ filename });
 }
