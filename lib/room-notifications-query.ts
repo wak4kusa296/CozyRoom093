@@ -5,6 +5,7 @@ import {
 } from "@/lib/broadcast-pushes";
 import { listPublicContents } from "@/lib/content";
 import { listAdminLetterEventsForGuest, normalizeThreadKey } from "@/lib/letters";
+import { isEventAtOrBeforeCutoff, isEventStrictlyBeforeCutoff } from "@/lib/notification-account-window";
 import type {
   RoomNotificationContentItem,
   RoomNotificationItem,
@@ -12,14 +13,7 @@ import type {
   RoomNotificationReplyItem
 } from "@/lib/room-notifications";
 
-/**
- * アカウント登録より前の「サイト全体向け」通知だけ除外する。
- * 文通（adminLetter）はゲスト行があって初めて存在するため、created_at 基準では切らない。
- */
-function isBeforeGuestAccount(eventIso: string, accountStartedAtIso: string | null | undefined): boolean {
-  if (!accountStartedAtIso) return false;
-  return new Date(eventIso).getTime() < new Date(accountStartedAtIso).getTime();
-}
+/** 文通（adminLetter）はゲスト行があって初めて存在するため、アカウント日時では切らない。 */
 
 function parseAdminLetterNotificationId(id: string): { slugKey: string; guestKey: string; createdAt: string } | null {
   if (!id.startsWith("adminLetter|")) return null;
@@ -44,7 +38,7 @@ export async function buildUnreadRoomNotifications(
   const contentItems: RoomNotificationContentItem[] = [];
   for (const item of publicItems) {
     const published = item.published_at ?? item.date;
-    if (isBeforeGuestAccount(published, accountStartedAtIso)) continue;
+    if (isEventBeforeGuestAccount(published, accountStartedAtIso)) continue;
     const id = `content|${item.slug}`;
     if (reads[id]) continue;
     contentItems.push({
@@ -60,7 +54,7 @@ export async function buildUnreadRoomNotifications(
   const replyItems: RoomNotificationReplyItem[] = [];
   for (const row of adminLetters) {
     if (reads[row.id]) continue;
-    if (baselineIso && row.createdAt <= baselineIso) continue;
+    if (isEventAtOrBeforeCutoff(row.createdAt, baselineIso)) continue;
     replyItems.push({
       kind: "reply",
       id: row.id,
@@ -75,10 +69,10 @@ export async function buildUnreadRoomNotifications(
   const pushItems: RoomNotificationPushItem[] = [];
   for (const p of broadcasts) {
     if (!pushAppliesToGuest(p, guestId)) continue;
-    if (isBeforeGuestAccount(p.sentAt, accountStartedAtIso)) continue;
+    if (isEventStrictlyBeforeCutoff(p.sentAt, registrationCutoffIso)) continue;
     const id = `push|${p.id}`;
     if (reads[id]) continue;
-    if (baselineIso && p.sentAt <= baselineIso) continue;
+    if (isEventAtOrBeforeCutoff(p.sentAt, baselineIso)) continue;
     pushItems.push({
       kind: "push",
       id,
@@ -101,7 +95,7 @@ export async function buildHistoryRoomNotifications(
   guestId: string,
   reads: Record<string, string>,
   slugBySlugKey: Map<string, string>,
-  accountStartedAtIso?: string | null
+  registrationCutoffIso?: string | null
 ): Promise<RoomNotificationItem[]> {
   const guestKeyExpected = normalizeThreadKey(guestId);
 
@@ -123,7 +117,7 @@ export async function buildHistoryRoomNotifications(
       if (!pushId) continue;
       const p = await getBroadcastPushById(pushId);
       if (!p || !pushAppliesToGuest(p, guestId)) continue;
-      if (isBeforeGuestAccount(p.sentAt, accountStartedAtIso)) continue;
+      if (isEventStrictlyBeforeCutoff(p.sentAt, registrationCutoffIso)) continue;
       out.push({
         kind: "push",
         id: key,

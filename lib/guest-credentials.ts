@@ -33,7 +33,11 @@ export async function listGuestCredentials() {
   return all.filter((item) => item.isActive);
 }
 
-/** 台帳登録時刻（通知の「アカウントより前」を切る基準）。行が無い・未移行時は null */
+/**
+ * 台帳登録時刻（通知の「アカウントより前」を切る基準）。
+ * DB の `timestamptz` を UTC の ISO8601 で返す。日本時刻に直す必要は比較上ない（瞬間は一意）。
+ * 行が無い・未移行時は null。
+ */
 export async function getGuestAccountStartedAtIso(guestIdInput: string): Promise<string | null> {
   const guestId = guestIdInput.trim();
   if (!guestId) return null;

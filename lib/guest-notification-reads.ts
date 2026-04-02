@@ -1,6 +1,7 @@
 import { listBroadcastPushes, pushAppliesToGuest } from "@/lib/broadcast-pushes";
 import { listPublicContents } from "@/lib/content";
 import { getGuestAccountStartedAtIso, listGuestCredentials } from "@/lib/guest-credentials";
+import { isEventStrictlyBeforeCutoff } from "@/lib/notification-account-window";
 import { listAdminLetterEventsForGuest } from "@/lib/letters";
 import { getDbPool } from "@/lib/db";
 
@@ -84,8 +85,7 @@ export async function ensureGuestNotificationBaseline(
   if (map["__baseline_v1"]) return;
 
   const accountIso = accountStartedAtIso ?? (await getGuestAccountStartedAtIso(guestId));
-  const beforeAccount = (eventIso: string) =>
-    accountIso ? new Date(eventIso).getTime() < new Date(accountIso).getTime() : false;
+  const beforeAccount = (eventIso: string) => isEventStrictlyBeforeCutoff(eventIso, accountIso);
 
   const now = new Date().toISOString();
   const publicItems = await listPublicContents();

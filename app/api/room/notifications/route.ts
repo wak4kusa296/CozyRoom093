@@ -25,6 +25,8 @@ export async function GET(request: Request) {
   await ensureGuestNotificationBaseline(session.guestId, accountStartedAtIso);
   const reads = await getGuestNotificationReadsMap(session.guestId);
   const baselineIso = reads["__baseline_v1"];
+  /** 台帳日時が取れない環境では、初回ベースライン時刻で「登録前」に近い除外を行う */
+  const registrationCutoffIso = accountStartedAtIso ?? baselineIso ?? undefined;
 
   const allContents = await listContents();
   const slugBySlugKey = new Map(
@@ -36,13 +38,13 @@ export async function GET(request: Request) {
     reads,
     baselineIso,
     slugBySlugKey,
-    accountStartedAtIso
+    registrationCutoffIso
   );
   const unreadCount = unreadItems.length;
 
   const items =
     view === "history"
-      ? await buildHistoryRoomNotifications(session.guestId, reads, slugBySlugKey, accountStartedAtIso)
+      ? await buildHistoryRoomNotifications(session.guestId, reads, slugBySlugKey, registrationCutoffIso)
       : unreadItems;
 
   return NextResponse.json({
