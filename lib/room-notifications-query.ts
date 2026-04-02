@@ -12,7 +12,10 @@ import type {
   RoomNotificationReplyItem
 } from "@/lib/room-notifications";
 
-/** アカウント登録より前のイベントは通知に含めない */
+/**
+ * アカウント登録より前の「サイト全体向け」通知だけ除外する。
+ * 文通（adminLetter）はゲスト行があって初めて存在するため、created_at 基準では切らない。
+ */
 function isBeforeGuestAccount(eventIso: string, accountStartedAtIso: string | null | undefined): boolean {
   if (!accountStartedAtIso) return false;
   return new Date(eventIso).getTime() < new Date(accountStartedAtIso).getTime();
@@ -34,11 +37,14 @@ export async function buildUnreadRoomNotifications(
   guestId: string,
   reads: Record<string, string>,
   baselineIso: string | undefined,
-  slugBySlugKey: Map<string, string>
+  slugBySlugKey: Map<string, string>,
+  accountStartedAtIso?: string | null
 ): Promise<RoomNotificationItem[]> {
   const publicItems = await listPublicContents();
   const contentItems: RoomNotificationContentItem[] = [];
   for (const item of publicItems) {
+    const published = item.published_at ?? item.date;
+    if (isBeforeGuestAccount(published, accountStartedAtIso)) continue;
     const id = `content|${item.slug}`;
     if (reads[id]) continue;
     contentItems.push({
@@ -53,7 +59,6 @@ export async function buildUnreadRoomNotifications(
   const adminLetters = await listAdminLetterEventsForGuest(guestId);
   const replyItems: RoomNotificationReplyItem[] = [];
   for (const row of adminLetters) {
-    if (isBeforeGuestAccount(row.createdAt, accountStartedAtIso)) continue;
     if (reads[row.id]) continue;
     if (baselineIso && row.createdAt <= baselineIso) continue;
     replyItems.push({
@@ -146,7 +151,6 @@ export async function buildHistoryRoomNotifications(
       }
       const slugKeyNorm = normalizeThreadKey(parsed.slugKey);
       const slug = slugBySlugKey.get(slugKeyNorm) ?? slugBySlugKey.get(parsed.slugKey) ?? parsed.slugKey;
-      if (isBeforeGuestAccount(parsed.createdAt, accountStartedAtIso)) continue;
       out.push({
         kind: "reply",
         id: key,
