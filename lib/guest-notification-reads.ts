@@ -99,7 +99,6 @@ export async function ensureGuestNotificationBaseline(
     next[`content|${item.slug}`] = now;
   }
   for (const row of adminLetters) {
-    if (beforeAccount(row.createdAt)) continue;
     next[row.id] = now;
   }
   for (const p of broadcasts) {
