@@ -1860,6 +1860,21 @@ main {
   background: rgba(0, 0, 0, 0.05);
 }
 
+/* 管理画面: 再発行問い合わせ（送信先ピッカー＋ボタン列） */
+.room-notification-admin-recovery .admin-notification-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.room-notification-admin-recovery .admin-notification-item-actions--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 /* 初公開通知: 文通カード風・全体タップで記事へ（「既読」ボタンなし／記事を開くと既読） */
 .room-notification-content-published-link {
   display: flex;

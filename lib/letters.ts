@@ -218,3 +218,16 @@ export async function markGuestLetterNotificationsReadForThread(slug: string, gu
     await markLetterNotificationRead(guestLetterEventId(slugKey, guestKey, letter.createdAt));
   }
 }
+
+/** 管理画面で文通スレッドを開いたとき、ゲスト発の未読ベル通知をすべて既読にする */
+export async function markAllGuestLetterNotificationReadsForAdminThread(
+  slugKey: string,
+  guestKey: string
+): Promise<void> {
+  const events = await listGuestLetterEvents();
+  for (const e of events) {
+    if (e.slugKey === slugKey && e.guestKey === guestKey) {
+      await markLetterNotificationRead(e.id);
+    }
+  }
+}

@@ -2,7 +2,8 @@ import { AdminNav } from "@/app/admin/_nav";
 import { requireAdminSession } from "@/app/admin/_auth";
 import { AdminLettersReplyForm } from "@/app/admin/letters/admin-letters-reply-form";
 import { listContents } from "@/lib/content";
-import { getLetters, listLetterThreads, normalizeThreadKey } from "@/lib/letters";
+import { getLetters, listLetterThreads, markAllGuestLetterNotificationReadsForAdminThread, normalizeThreadKey } from "@/lib/letters";
+import { pingAdminNotificationSubscribers } from "@/lib/notification-push";
 import { listGuestCredentialsWithStatus } from "@/lib/guest-credentials";
 import Link from "next/link";
 
@@ -47,6 +48,11 @@ export default async function AdminLettersPage({
   const selectedLetters =
     selectedThread && selectedSlug && selectedGuestId ? await getLetters(selectedSlug, selectedGuestId) : [];
   const closeHref = slugFilter ? `/admin/letters?slug=${encodeURIComponent(slugFilter)}` : "/admin/letters";
+
+  if (normalizedSlugFilter && normalizedGuestFilter) {
+    await markAllGuestLetterNotificationReadsForAdminThread(normalizedSlugFilter, normalizedGuestFilter);
+    pingAdminNotificationSubscribers();
+  }
 
   return (
     <main className="landing admin-page-wrap">

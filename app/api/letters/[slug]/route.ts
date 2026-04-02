@@ -42,7 +42,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
       await sendWebPushToGuestIds([targetGuestId], {
         title: "管理人からの便り",
         body: preview || "文通に返信がありました。",
-        url: `/room/${encodeURIComponent(normalizedSlug)}`
+        url: `/room/${encodeURIComponent(normalizedSlug)}?letters=open`
       });
     } catch (e) {
       console.error("[letters POST] web push to guest", e);

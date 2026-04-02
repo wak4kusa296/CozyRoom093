@@ -28,6 +28,8 @@ export function RoomNotificationBell() {
     linkUrl?: string;
     linkLabel?: string;
     imageUrl?: string;
+    /** 未読一覧から開いたとき、モーダル表示と同タイミングで既読にする */
+    pendingMarkReadId?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -70,6 +72,22 @@ export function RoomNotificationBell() {
     const onRefresh = () => void load();
     window.addEventListener("room-notifications-refresh", onRefresh);
     return () => window.removeEventListener("room-notifications-refresh", onRefresh);
+  }, [load]);
+
+  const markRead = useCallback(async (id: string) => {
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      const res = await fetch("/api/room/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id })
+      });
+      if (!res.ok) void load();
+      else void load();
+    } catch {
+      void load();
+    }
   }, [load]);
 
   useLayoutEffect(() => {
@@ -122,23 +140,12 @@ export function RoomNotificationBell() {
     if (!el.open) {
       el.showModal();
     }
-  }, [pushModal]);
-
-  async function markRead(id: string) {
-    setItems((prev) => prev.filter((x) => x.id !== id));
-    setUnreadCount((c) => Math.max(0, c - 1));
-    try {
-      const res = await fetch("/api/room/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id })
-      });
-      if (!res.ok) void load();
-      else void load();
-    } catch {
-      void load();
+    const markId = pushModal.pendingMarkReadId;
+    if (markId) {
+      void markRead(markId);
+      setPushModal((prev) => (prev ? { ...prev, pendingMarkReadId: undefined } : null));
     }
-  }
+  }, [pushModal, markRead]);
 
   if (!sessionActive) return null;
 
@@ -178,7 +185,7 @@ export function RoomNotificationBell() {
         </div>
         <p className="admin-notification-panel-desc">
           {viewMode === "unread"
-            ? "新着公開のお知らせと、管理者からの文通です。公開のお知らせは記事を開くと既読になり、返信のお知らせは該当記事で文通を開くと既読になります。プッシュ通知はカードをタップすると既読になり、本文を表示します。"
+            ? "新着公開のお知らせと、管理者からの文通です。公開のお知らせは記事を開くと既読になり、返信のお知らせは該当記事で文通を開くと既読になります。手動プッシュは本文モーダルを開いたときに既読になります。"
             : "既読にした通知の履歴です。プッシュ通知のカードをタップすると本文を表示できます。フィルターをもう一度押すと未読一覧に戻ります。"}
         </p>
       </header>
@@ -200,9 +207,6 @@ export function RoomNotificationBell() {
                   type="button"
                   className="room-notification-push-card-main"
                   onClick={() => {
-                    if (viewMode === "unread") {
-                      void markRead(row.id);
-                    }
                     setPushModal({
                       title: row.title,
                       body: row.body,
@@ -210,7 +214,8 @@ export function RoomNotificationBell() {
                       lead: row.lead ?? row.subtitle,
                       linkUrl: row.linkUrl,
                       linkLabel: row.linkLabel,
-                      imageUrl: row.imageUrl
+                      imageUrl: row.imageUrl,
+                      pendingMarkReadId: viewMode === "unread" ? row.id : undefined
                     });
                   }}
                 >

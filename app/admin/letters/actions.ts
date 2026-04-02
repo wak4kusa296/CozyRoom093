@@ -38,7 +38,7 @@ export async function replyLetterAction(
     await sendWebPushToGuestIds([guestId], {
       title: "管理人からの便り",
       body: preview || "文通に返信がありました。",
-      url: `/room/${encodeURIComponent(slug)}`
+      url: `/room/${encodeURIComponent(slug)}?letters=open`
     });
   } catch (e) {
     console.error("[replyLetterAction] web push", e);
