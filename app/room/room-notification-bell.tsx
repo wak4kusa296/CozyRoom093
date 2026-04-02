@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import {
+  ROOM_PUSH_BANNER_DISMISSED_EVENT,
+  ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY
+} from "@/app/components/room-push-notify-banner";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import type { RoomNotificationItem, RoomNotificationView } from "@/lib/room-notifications";
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
@@ -24,7 +28,7 @@ export function RoomNotificationBell() {
   const [pushPermitVisible, setPushPermitVisible] = useState(false);
   const [pushPermitBusy, setPushPermitBusy] = useState(false);
   const [listLoading, setListLoading] = useState(false);
-  const loadSeqRef = useRef(0);
+  const nonSilentLoadCountRef = useRef(0);
   const loadEffectFirstRun = useRef(true);
 
   const [pushModal, setPushModal] = useState<{
@@ -52,6 +56,16 @@ export function RoomNotificationBell() {
       setPushPermitVisible(false);
       return;
     }
+    let bannerLaterDismissed = false;
+    try {
+      bannerLaterDismissed = localStorage.getItem(ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY) === "1";
+    } catch {
+      /* ignore */
+    }
+    if (!bannerLaterDismissed) {
+      setPushPermitVisible(false);
+      return;
+    }
     try {
       const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
       const data = (await res.json()) as { vapidPublicKey?: string | null };
@@ -73,6 +87,20 @@ export function RoomNotificationBell() {
     if (open) void refreshPushPermitVisibility();
   }, [open, refreshPushPermitVisibility]);
 
+  useEffect(() => {
+    const onBannerLater = () => void refreshPushPermitVisibility();
+    window.addEventListener(ROOM_PUSH_BANNER_DISMISSED_EVENT, onBannerLater);
+    return () => window.removeEventListener(ROOM_PUSH_BANNER_DISMISSED_EVENT, onBannerLater);
+  }, [refreshPushPermitVisibility]);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY) void refreshPushPermitVisibility();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [refreshPushPermitVisibility]);
+
   const onPermitPush = useCallback(async () => {
     setPushPermitBusy(true);
     try {
@@ -85,8 +113,10 @@ export function RoomNotificationBell() {
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true;
-    const seq = ++loadSeqRef.current;
-    if (!silent) setListLoading(true);
+    if (!silent) {
+      nonSilentLoadCountRef.current += 1;
+      setListLoading(true);
+    }
     try {
       const res = await fetch(`/api/room/notifications?view=${viewMode}`, { cache: "no-store" });
       if (res.status === 401) {
@@ -102,7 +132,13 @@ export function RoomNotificationBell() {
       setItems(data.items ?? []);
       setUnreadCount(data.unreadCount ?? 0);
     } finally {
-      if (seq === loadSeqRef.current && !silent) setListLoading(false);
+      if (!silent) {
+        nonSilentLoadCountRef.current -= 1;
+        if (nonSilentLoadCountRef.current <= 0) {
+          nonSilentLoadCountRef.current = 0;
+          setListLoading(false);
+        }
+      }
     }
   }, [viewMode]);
 
