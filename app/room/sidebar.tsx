@@ -55,7 +55,11 @@ export function RoomSidebar({
           </span>
           <span>しあわせに関する宣言</span>
         </Link>
-        <a href="https://youtu.be/MQNu-AqtgYw">
+        <a
+          href="https://youtu.be/MQNu-AqtgYw"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <span className="material-symbols-outlined side-nav-icon" aria-hidden="true">
             history_edu
           </span>
