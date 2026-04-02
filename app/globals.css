@@ -562,21 +562,6 @@ main {
   }
 }
 
-.admin-notification-badge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: rgba(191, 63, 0, 1);
-  color: #fff;
-  font-size: 10px;
-  line-height: 18px;
-  text-align: center;
-}
-
 .admin-notification-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -3931,7 +3916,7 @@ blockquote blockquote::before {
 
 .admin-letters-table tbody td {
   padding: 0;
-  border-bottom: 1px solid var(--fg);
+  border-bottom: 1px solid var(--border-1);
 }
 
 .admin-letters-row-link {
@@ -6305,6 +6290,7 @@ blockquote blockquote::before {
   display: flex;
   align-items: center;
   justify-content: center;
+  align-content: center;
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px;
@@ -6321,7 +6307,14 @@ blockquote blockquote::before {
   padding: 6px 12px;
   border-radius: 4px;
   border: none;
-  background: rgba(22, 22, 22, 0.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  background: #161616;
   color: #fff;
   cursor: pointer;
   text-align: center;
@@ -6331,7 +6324,7 @@ blockquote blockquote::before {
 }
 
 .admin-thumb-overlay-btn:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: #2a2a2a;
 }
 
 .admin-thumb-overlay-btn:disabled {
