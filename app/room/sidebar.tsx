@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { RoomBrand } from "@/app/components/room-brand";
+import { RoomPwaInstall } from "@/app/components/room-pwa-install";
 
 export function RoomSidebar({
   id,
@@ -76,6 +77,7 @@ export function RoomSidebar({
             <span>管理人向け</span>
           </Link>
         ) : null}
+        <RoomPwaInstall />
         <p className="sidebar-foot">© 2026 GotoTatsuya</p>
       </div>
     </aside>
