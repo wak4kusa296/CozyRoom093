@@ -1,5 +1,7 @@
 /** ルームの Web Push 購読（クライアント専用・バナー／通知センターから利用） */
 
+import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
+
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -30,10 +32,12 @@ export async function subscribeRoomPush(): Promise<RoomPushSubscribeResult> {
     applicationServerKey: urlBase64ToUint8Array(data.vapidPublicKey) as BufferSource
   });
 
-  await fetch("/api/room/push-subscribe", {
+  const postRes = await fetch("/api/room/push-subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(sub.toJSON())
   });
+  redirectHomeIfUnauthorized(postRes.status);
+  if (!postRes.ok) return "denied";
   return "granted";
 }

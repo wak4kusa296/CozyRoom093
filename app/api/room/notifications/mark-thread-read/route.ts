@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import { listAdminLetterEventsForGuest, normalizeThreadKey } from "@/lib/letters";
 import { markGuestNotificationRead } from "@/lib/guest-notification-reads";
 import { pingRoomNotificationSubscriber } from "@/lib/notification-push";
@@ -7,7 +7,7 @@ import { pingRoomNotificationSubscriber } from "@/lib/notification-push";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }

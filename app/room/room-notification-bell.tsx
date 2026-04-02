@@ -8,6 +8,7 @@ import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import type { RoomNotificationItem, RoomNotificationView } from "@/lib/room-notifications";
 import { shouldShowPermitPushButton } from "@/lib/push-permit-ui";
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
+import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
 
 export function RoomNotificationBell() {
@@ -88,7 +89,7 @@ export function RoomNotificationBell() {
     try {
       const res = await fetch(`/api/room/notifications?view=${viewMode}`, { cache: "no-store" });
       if (res.status === 401) {
-        setSessionActive(false);
+        redirectHomeIfUnauthorized(401);
         return;
       }
       if (!res.ok) return;
@@ -143,6 +144,7 @@ export function RoomNotificationBell() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       });
+      redirectHomeIfUnauthorized(res.status);
       if (!res.ok) void load({ silent: true });
       else void load({ silent: true });
     } catch {

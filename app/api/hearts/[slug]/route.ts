@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import { normalizeSlugParam } from "@/lib/content";
 import { getHeartStateForGuest, pressHeart } from "@/lib/hearts";
 
 export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
 
   const { slug } = await context.params;
@@ -21,7 +21,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
 }
 
 export async function POST(_request: Request, context: { params: Promise<{ slug: string }> }) {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) return NextResponse.json({ ok: false }, { status: 401 });
 
   const { slug } = await context.params;

@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState, startTransition } from "react";
 import { MdFavorite } from "react-icons/md";
+import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
 import { HEART_COLOR_MAX } from "@/lib/heart-colors";
 import { HEART_LIMIT_PER_GUEST } from "@/lib/heart-constants";
 import styles from "./room-heart.module.css";
@@ -100,6 +101,7 @@ export function HeartButton({ slug }: { slug: string }) {
     setState("sending");
     try {
       const response = await fetch(`/api/hearts/${encodeURIComponent(slug)}`, { method: "POST" });
+      redirectHomeIfUnauthorized(response.status);
 
       if (!response.ok) {
         setState("error");

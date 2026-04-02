@@ -1,10 +1,10 @@
-import { getSession } from "@/lib/auth";
+import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
 import { registerRoomNotificationPush } from "@/lib/notification-push";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
