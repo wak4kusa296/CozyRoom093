@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
     name: "誰も知らない部屋",
-    short_name: "知らない部屋",
+    short_name: "誰も知らない部屋",
     description: "招待された人だけが入れる静かな部屋",
     start_url: "/",
     scope: "/",

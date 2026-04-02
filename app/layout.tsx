@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   applicationName: "誰も知らない部屋",
   appleWebApp: {
     capable: true,
-    title: "知らない部屋",
+    title: "誰も知らない部屋",
     statusBarStyle: "default"
   }
 };
