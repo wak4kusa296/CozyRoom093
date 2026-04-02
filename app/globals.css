@@ -170,6 +170,20 @@ main {
   padding-top: 16px;
 }
 
+.landing .card .landing-secondary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0 16px;
+  padding-bottom: 8px;
+}
+
+.landing .card .landing-secondary-actions .text-link {
+  margin: 0;
+  padding: 0;
+}
+
 .landing .card .text-link {
   margin: 0 16px;
   padding-bottom: 8px;
