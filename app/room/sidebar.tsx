@@ -6,13 +6,16 @@ import { RoomBrand } from "@/app/components/room-brand";
 export function RoomSidebar({
   id,
   onNavigate,
-  secretPhrase
+  secretPhrase,
+  showAdminLink
 }: {
   id?: string;
   /** モバイルドロワー: リンクを押したら閉じる */
   onNavigate?: () => void;
   /** 台帳の秘密の言葉（ゲストのみ表示。未登録・管理者は null） */
   secretPhrase?: string | null;
+  /** 管理画面の秘密でログインしたときのみ true */
+  showAdminLink?: boolean;
 }) {
   return (
     <aside
@@ -65,12 +68,14 @@ export function RoomSidebar({
             秘密の言葉：<strong>{secretPhrase}</strong>
           </p>
         ) : null}
-        <Link href="/admin" className="sidebar-admin-link">
-          <span className="material-symbols-outlined sidebar-admin-link-icon" aria-hidden="true">
-            admin_panel_settings
-          </span>
-          <span>管理人向け</span>
-        </Link>
+        {showAdminLink ? (
+          <Link href="/admin" className="sidebar-admin-link">
+            <span className="material-symbols-outlined sidebar-admin-link-icon" aria-hidden="true">
+              admin_panel_settings
+            </span>
+            <span>管理人向け</span>
+          </Link>
+        ) : null}
         <p className="sidebar-foot">© 2026 GotoTatsuya</p>
       </div>
     </aside>

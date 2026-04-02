@@ -19,6 +19,7 @@ export async function dbGetRawMarkdown(slug: string): Promise<{ raw: string; upd
 
 export async function dbUpsertRawMarkdown(slug: string, raw: string): Promise<void> {
   const pool = getDbPool();
+  await pool.query(`DELETE FROM content_deleted_slugs WHERE slug = $1`, [slug]);
   await pool.query(
     `
     INSERT INTO content_articles (slug, raw_markdown, updated_at)
@@ -34,4 +35,29 @@ export async function dbUpsertRawMarkdown(slug: string, raw: string): Promise<vo
 export async function dbDeleteRawMarkdown(slug: string): Promise<void> {
   const pool = getDbPool();
   await pool.query(`DELETE FROM content_articles WHERE slug = $1`, [slug]);
+}
+
+/** Postgres + Git 併用時、DB から消しても残る content/*.md を一覧・表示から外す */
+export async function dbRecordDeletedSlug(slug: string): Promise<void> {
+  const pool = getDbPool();
+  await pool.query(
+    `
+    INSERT INTO content_deleted_slugs (slug, deleted_at)
+    VALUES ($1, NOW())
+    ON CONFLICT (slug) DO UPDATE SET deleted_at = NOW()
+    `,
+    [slug]
+  );
+}
+
+export async function dbListDeletedSlugs(): Promise<Set<string>> {
+  const pool = getDbPool();
+  const result = await pool.query<{ slug: string }>(`SELECT slug FROM content_deleted_slugs`);
+  return new Set(result.rows.map((r) => r.slug));
+}
+
+export async function dbIsSlugDeleted(slug: string): Promise<boolean> {
+  const pool = getDbPool();
+  const result = await pool.query(`SELECT 1 FROM content_deleted_slugs WHERE slug = $1 LIMIT 1`, [slug]);
+  return result.rowCount !== null && result.rowCount > 0;
 }

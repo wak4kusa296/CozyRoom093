@@ -9,13 +9,16 @@ import { RoomSidebar } from "./sidebar";
 export function RoomShellClient({
   children,
   sidebarSecretPhrase,
-  showPushNotifyBanner
+  showPushNotifyBanner,
+  showAdminSidebarLink
 }: {
   children: React.ReactNode;
   /** ログイン中ゲストの台帳にある秘密の言葉（未登録なら null） */
   sidebarSecretPhrase?: string | null;
   /** ブラウザ通知バナーを出す（未ログインなら false） */
   showPushNotifyBanner?: boolean;
+  /** 管理画面の秘密でログインしたセッションのみ true（サイドバーの管理人導線） */
+  showAdminSidebarLink?: boolean;
 }) {
   const [navOpen, setNavOpen] = useState(false);
 
@@ -84,6 +87,7 @@ export function RoomShellClient({
         id="room-sidebar-nav"
         onNavigate={closeNav}
         secretPhrase={sidebarSecretPhrase ?? null}
+        showAdminLink={showAdminSidebarLink ?? false}
       />
       <div className="room-main">
         {children}

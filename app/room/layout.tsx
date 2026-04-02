@@ -14,7 +14,11 @@ export default async function RoomLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <RoomShellClient sidebarSecretPhrase={secretPhrase} showPushNotifyBanner={!!session}>
+    <RoomShellClient
+      sidebarSecretPhrase={secretPhrase}
+      showPushNotifyBanner={!!session}
+      showAdminSidebarLink={session?.role === "admin"}
+    >
       {children}
     </RoomShellClient>
   );
