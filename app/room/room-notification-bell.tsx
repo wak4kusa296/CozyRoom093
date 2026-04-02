@@ -56,6 +56,18 @@ export function RoomNotificationBell() {
     if (open) void refreshPushPermitVisibility();
   }, [open, refreshPushPermitVisibility]);
 
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") void refreshPushPermitVisibility();
+    };
+    window.addEventListener("focus", onVis);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onVis);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [refreshPushPermitVisibility]);
+
   const onPermitPush = useCallback(async () => {
     setPushPermitBusy(true);
     try {
