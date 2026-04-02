@@ -105,6 +105,23 @@ export async function getPassphraseByGuestId(guestIdInput: string): Promise<stri
   return result.rows[0]?.phrase ?? null;
 }
 
+export async function isGuestCredentialActive(guestIdInput: string): Promise<boolean> {
+  const id = guestIdInput.trim();
+  if (!id) return false;
+  try {
+    const pool = getDbPool();
+    const result = await pool.query<{ is_active: boolean }>(
+      `SELECT is_active FROM guest_credentials WHERE guest_id = $1 LIMIT 1`,
+      [id]
+    );
+    const row = result.rows[0];
+    if (!row) return true;
+    return row.is_active;
+  } catch {
+    return true;
+  }
+}
+
 export async function findGuestByPhrase(phraseInput: string): Promise<Guest | null> {
   const phrase = phraseInput.trim();
   if (!phrase) return null;

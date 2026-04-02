@@ -708,6 +708,10 @@ main {
   min-width: 0;
 }
 
+.room-notification-permit-push-wrap {
+  margin: 10px 0 14px;
+}
+
 .room-notification-filter-toggle {
   flex-shrink: 0;
   display: inline-grid;
@@ -3912,6 +3916,19 @@ blockquote blockquote::before {
 
 .admin-table td {
   border-bottom: 1px solid var(--border-1);
+}
+
+/* 文通管理: スレッド一覧・モーダル内スレッド欄の角を直角に */
+.admin-letters-page .admin-table-wrap {
+  border-radius: 0;
+}
+
+.admin-letters-page .letter-modal .thread {
+  border-radius: 0;
+}
+
+.admin-letters-page .letter-modal .thread .letter-item {
+  border-radius: 0;
 }
 
 .admin-letters-table tbody td {
