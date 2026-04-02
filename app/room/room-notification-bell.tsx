@@ -3,12 +3,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import {
-  ROOM_PUSH_BANNER_DISMISSED_EVENT,
-  ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY
-} from "@/app/components/room-push-notify-banner";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import type { RoomNotificationItem, RoomNotificationView } from "@/lib/room-notifications";
+import { shouldShowPermitPushButton } from "@/lib/push-permit-ui";
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
 
@@ -48,35 +45,7 @@ export function RoomNotificationBell() {
   }, []);
 
   const refreshPushPermitVisibility = useCallback(async () => {
-    if (
-      typeof window === "undefined" ||
-      !("Notification" in window) ||
-      !("PushManager" in window)
-    ) {
-      setPushPermitVisible(false);
-      return;
-    }
-    let bannerLaterDismissed = false;
-    try {
-      bannerLaterDismissed = localStorage.getItem(ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY) === "1";
-    } catch {
-      /* ignore */
-    }
-    if (!bannerLaterDismissed) {
-      setPushPermitVisible(false);
-      return;
-    }
-    try {
-      const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
-      const data = (await res.json()) as { vapidPublicKey?: string | null };
-      if (!data.vapidPublicKey) {
-        setPushPermitVisible(false);
-        return;
-      }
-      setPushPermitVisible(Notification.permission !== "granted");
-    } catch {
-      setPushPermitVisible(false);
-    }
+    setPushPermitVisible(await shouldShowPermitPushButton());
   }, []);
 
   useEffect(() => {
@@ -86,20 +55,6 @@ export function RoomNotificationBell() {
   useEffect(() => {
     if (open) void refreshPushPermitVisibility();
   }, [open, refreshPushPermitVisibility]);
-
-  useEffect(() => {
-    const onBannerLater = () => void refreshPushPermitVisibility();
-    window.addEventListener(ROOM_PUSH_BANNER_DISMISSED_EVENT, onBannerLater);
-    return () => window.removeEventListener(ROOM_PUSH_BANNER_DISMISSED_EVENT, onBannerLater);
-  }, [refreshPushPermitVisibility]);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === ROOM_PUSH_BANNER_DISMISS_STORAGE_KEY) void refreshPushPermitVisibility();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [refreshPushPermitVisibility]);
 
   const onPermitPush = useCallback(async () => {
     setPushPermitBusy(true);

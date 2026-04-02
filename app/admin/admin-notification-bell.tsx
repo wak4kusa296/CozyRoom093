@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RecoveryGuestPicker, type RecoveryGuestOption } from "./recovery-guest-picker";
+import { shouldShowPermitPushButton } from "@/lib/push-permit-ui";
+import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
 
 type RecoveryFeedItem = {
@@ -46,12 +48,36 @@ export function AdminNotificationBell() {
   const [recoveryGuestOptions, setRecoveryGuestOptions] = useState<RecoveryGuestOption[]>([]);
   /** 複数ゲスト時のみ。再発行1件ごとに、台帳のどのユーザー宛か */
   const [recoveryGuestPick, setRecoveryGuestPick] = useState<Record<string, string>>({});
+  const [pushPermitVisible, setPushPermitVisible] = useState(false);
+  const [pushPermitBusy, setPushPermitBusy] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  const refreshPushPermitVisibility = useCallback(async () => {
+    setPushPermitVisible(await shouldShowPermitPushButton());
+  }, []);
+
+  useEffect(() => {
+    void refreshPushPermitVisibility();
+  }, [refreshPushPermitVisibility]);
+
+  useEffect(() => {
+    if (open) void refreshPushPermitVisibility();
+  }, [open, refreshPushPermitVisibility]);
+
+  const onPermitPush = useCallback(async () => {
+    setPushPermitBusy(true);
+    try {
+      const result = await subscribeRoomPush();
+      if (result === "granted") setPushPermitVisible(false);
+    } finally {
+      setPushPermitBusy(false);
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -201,9 +227,23 @@ export function AdminNotificationBell() {
         style={{ top: panelPos.top, right: panelPos.right }}
       >
         <header className="admin-notification-panel-head">
-          <h2 id="admin-notification-title" className="admin-notification-panel-title">
-            通知センター
-          </h2>
+          <div className="room-notification-panel-head-row">
+            <h2 id="admin-notification-title" className="admin-notification-panel-title">
+              通知センター
+            </h2>
+            <div className="room-notification-panel-actions">
+              {pushPermitVisible ? (
+                <button
+                  type="button"
+                  className="room-push-notify-banner-primary room-notification-permit-push-inline"
+                  disabled={pushPermitBusy}
+                  onClick={() => void onPermitPush()}
+                >
+                  通知を許可
+                </button>
+              ) : null}
+            </div>
+          </div>
           <p className="admin-notification-panel-desc">
             再発行の問い合わせと、ゲストからの文通です。再発行はメール送信または「無視」で一覧から消えます。文通はスレッドを開くか「対応済み」で消えます。
           </p>
