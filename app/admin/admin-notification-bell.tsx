@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RecoveryGuestPicker, type RecoveryGuestOption } from "./recovery-guest-picker";
-import { formatSiteDateTime } from "@/lib/site-datetime";
+import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
 
 type RecoveryFeedItem = {
   kind: "recovery";
@@ -105,8 +105,10 @@ export function AdminNotificationBell() {
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
+      const t = e.target as HTMLElement;
       if (wrapRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      /** RecoveryGuestPicker のメニューは portal で body 直下のため、外側扱いにならないようにする */
+      if (t.closest(".admin-notification-guest-menu")) return;
       setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
@@ -123,6 +125,7 @@ export function AdminNotificationBell() {
         body: JSON.stringify({ id })
       });
       if (!res.ok) void load();
+      else void load();
     } catch {
       void load();
     }
@@ -157,6 +160,7 @@ export function AdminNotificationBell() {
       if (res.ok) {
         setItems((prev) => prev.filter((x) => x.id !== row.id));
         setUnreadCount((c) => Math.max(0, c - 1));
+        void load();
         return;
       }
       const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -183,123 +187,124 @@ export function AdminNotificationBell() {
   if (gate !== "admin") return null;
 
   const panel = open ? (
-    <div
-      ref={panelRef}
-      className="admin-notification-panel admin-notification-panel--portal"
-      role="dialog"
-      aria-labelledby="admin-notification-title"
-      style={{ top: panelPos.top, right: panelPos.right }}
-    >
-      <header className="admin-notification-panel-head">
-        <h2 id="admin-notification-title" className="admin-notification-panel-title">
-          通知
-        </h2>
-        <p className="admin-notification-panel-desc">
-          未対応の再発行リクエストと文通を、新しい順に表示します。再発行の呼び名・場面は本人確認のヒントであり、台帳とは照合しません。誰宛か思い出したうえでユーザーを選び、メールを送ってください。再発行は送信で一覧から消えます。文通は「対応済み」で消えます。
-        </p>
-        {!smtpConfigured ? (
-          <p className="admin-notification-smtp-hint" role="status">
-            <span className="material-symbols-outlined admin-notification-smtp-icon" aria-hidden="true">
-              outgoing_mail
-            </span>
-            <span>
-              SMTP が未設定のため、再発行メールの送信ができません。.env に SMTP_HOST などを設定し、サーバーを再起動してください。
-            </span>
+    <>
+      <div
+        className="room-notification-panel-backdrop"
+        aria-hidden="true"
+        onClick={() => setOpen(false)}
+      />
+      <div
+        ref={panelRef}
+        className="admin-notification-panel admin-notification-panel--portal"
+        role="dialog"
+        aria-labelledby="admin-notification-title"
+        style={{ top: panelPos.top, right: panelPos.right }}
+      >
+        <header className="admin-notification-panel-head">
+          <h2 id="admin-notification-title" className="admin-notification-panel-title">
+            通知センター
+          </h2>
+          <p className="admin-notification-panel-desc">
+            再発行の問い合わせと、ゲストからの文通です。再発行はメール送信または「無視」で一覧から消えます。文通はスレッドを開くか「対応済み」で消えます。
           </p>
-        ) : null}
-      </header>
-      {items.length === 0 ? (
-        <p className="meta admin-notification-empty">通知はありません。</p>
-      ) : (
-        <ul className="admin-notification-list">
-          {items.map((row) =>
-            row.kind === "recovery" ? (
-              <li key={row.id} className="is-unread">
-                <div className="admin-notification-item-body">
-                  <p className="admin-notification-kind">
-                    <span className="admin-notification-kind-label">再発行</span>
+          {!smtpConfigured ? (
+            <p className="admin-notification-smtp-hint" role="status">
+              <span className="material-symbols-outlined admin-notification-smtp-icon" aria-hidden="true">
+                outgoing_mail
+              </span>
+              <span>
+                SMTP が未設定のため、再発行メールの送信ができません。.env に SMTP_HOST などを設定し、サーバーを再起動してください。
+              </span>
+            </p>
+          ) : null}
+        </header>
+        {items.length === 0 ? (
+          <p className="meta admin-notification-empty">通知はありません。</p>
+        ) : (
+          <ul className="admin-notification-list">
+            {items.map((row) =>
+              row.kind === "recovery" ? (
+                <li key={row.id} className="room-notification-reply-card room-notification-admin-recovery is-unread">
+                  <span className="room-notification-push-kind">秘密の言葉の問い合わせ</span>
+                  <p className="admin-notification-when">{formatSiteDateTimeWithSeconds(row.createdAt)}</p>
+                  <p className="room-notification-reply-lead">
+                    <span className="admin-notification-label">呼び名</span> {row.hintName}
                   </p>
-                  <p className="admin-notification-when">{formatSiteDateTime(row.createdAt)}</p>
-                  <p>
-                    <span className="admin-notification-label">呼び名</span>
-                    {row.hintName}
+                  <p className="admin-notification-letter-preview">
+                    <span className="admin-notification-label">場面</span> {row.hintPlace}
                   </p>
-                  <p>
-                    <span className="admin-notification-label">場面</span>
-                    {row.hintPlace}
+                  <p className="admin-notification-letter-preview">
+                    <span className="admin-notification-label">宛先メール</span> {row.contactEmail || "（未入力）"}
                   </p>
-                  <p>
-                    <span className="admin-notification-label">宛先メール</span>
-                    {row.contactEmail || "（未入力）"}
-                  </p>
-                </div>
-                <div
-                  className={
-                    smtpConfigured && recoveryGuestOptions.length > 1
-                      ? "admin-notification-item-actions admin-notification-item-actions--stack"
-                      : "admin-notification-item-actions"
-                  }
-                >
-                  {smtpConfigured && recoveryGuestOptions.length > 1 ? (
-                    <RecoveryGuestPicker
-                      rowId={row.id}
-                      options={recoveryGuestOptions}
-                      value={recoveryGuestPick[row.id] ?? ""}
-                      onChange={(guestId) =>
-                        setRecoveryGuestPick((prev) => ({ ...prev, [row.id]: guestId }))
-                      }
-                    />
-                  ) : null}
-                  {smtpConfigured ? (
+                  <div
+                    className={
+                      smtpConfigured && recoveryGuestOptions.length > 1
+                        ? "admin-notification-item-actions admin-notification-item-actions--stack"
+                        : "admin-notification-item-actions"
+                    }
+                  >
+                    {smtpConfigured && recoveryGuestOptions.length > 1 ? (
+                      <RecoveryGuestPicker
+                        rowId={row.id}
+                        options={recoveryGuestOptions}
+                        value={recoveryGuestPick[row.id] ?? ""}
+                        onChange={(guestId) =>
+                          setRecoveryGuestPick((prev) => ({ ...prev, [row.id]: guestId }))
+                        }
+                      />
+                    ) : null}
+                    {smtpConfigured ? (
+                      <button
+                        type="button"
+                        className="room-notification-seal-button admin-notification-primary-action"
+                        disabled={
+                          sendingRecoveryId === row.id ||
+                          !row.contactEmail.trim() ||
+                          recoveryGuestOptions.length === 0 ||
+                          (recoveryGuestOptions.length > 1 && !resolveRecoveryGuestId(row.id))
+                        }
+                        onClick={() => void sendRecoveryEmail(row)}
+                      >
+                        {sendingRecoveryId === row.id ? "送信中…" : "再発行メールを送る"}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      className="admin-small-button admin-notification-primary-action"
-                      disabled={
-                        sendingRecoveryId === row.id ||
-                        !row.contactEmail.trim() ||
-                        recoveryGuestOptions.length === 0 ||
-                        (recoveryGuestOptions.length > 1 && !resolveRecoveryGuestId(row.id))
-                      }
-                      onClick={() => void sendRecoveryEmail(row)}
+                      className="admin-small-button"
+                      disabled={sendingRecoveryId === row.id}
+                      onClick={() => void markRead(row.id)}
                     >
-                      {sendingRecoveryId === row.id ? "送信中…" : "再発行メールを送る"}
+                      無視
                     </button>
-                  ) : null}
-                </div>
-              </li>
-            ) : (
-              <li key={row.id} className="is-unread">
-                <div className="admin-notification-item-body">
-                  <p className="admin-notification-kind">
-                    <span className="admin-notification-kind-label">文通</span>
-                  </p>
-                  <p className="admin-notification-when">{formatSiteDateTime(row.createdAt)}</p>
-                  <p>
-                    <span className="admin-notification-label">送信</span>
-                    {row.sender}
-                  </p>
+                  </div>
+                </li>
+              ) : (
+                <li key={row.id} className="room-notification-reply-card is-unread">
+                  <span className="room-notification-push-kind">文通</span>
+                  <p className="admin-notification-when">{formatSiteDateTimeWithSeconds(row.createdAt)}</p>
+                  <p className="room-notification-reply-lead">{row.sender}さんからの便り</p>
                   <p className="admin-notification-letter-preview">{truncateBody(row.body)}</p>
                   <p>
                     <a
                       href={`/admin/letters?slug=${encodeURIComponent(row.slugKey)}&guest=${encodeURIComponent(row.guestKey)}`}
-                      className="admin-notification-thread-link"
+                      className="room-notification-seal-button"
                       onClick={() => setOpen(false)}
                     >
                       スレッドを開く
                     </a>
                   </p>
-                </div>
-                <div className="admin-notification-item-actions">
-                  <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
-                    対応済み
-                  </button>
-                </div>
-              </li>
-            )
-          )}
-        </ul>
-      )}
-    </div>
+                  <div className="admin-notification-item-actions">
+                    <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
+                      対応済み
+                    </button>
+                  </div>
+                </li>
+              )
+            )}
+          </ul>
+        )}
+      </div>
+    </>
   ) : null;
 
   return (
@@ -307,8 +312,12 @@ export function AdminNotificationBell() {
       <button
         ref={bellRef}
         type="button"
-        className="admin-notification-bell"
-        aria-label="通知を開く"
+        className={`admin-notification-bell${unreadCount > 0 ? " admin-notification-bell--unread" : ""}`}
+        aria-label={
+          unreadCount > 0
+            ? `通知センターを開く（未読${unreadCount > 99 ? "が多数あり" : `${unreadCount}件`}）`
+            : "通知センターを開く"
+        }
         aria-expanded={open}
         onClick={() => {
           setOpen((v) => !v);
