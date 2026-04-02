@@ -56,7 +56,7 @@ export default async function AdminLettersPage({
 
   return (
     <main className="landing admin-page-wrap">
-      <section className="card admin-page-card">
+      <section className="card admin-page-card admin-letters-page">
         <div className="admin-page-header">
           <h1>文通管理</h1>
           <p className="lead">各スレッドの最新状況を確認できます。</p>

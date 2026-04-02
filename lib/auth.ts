@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { findGuestByPhrase, parseGuestCredentialsEnv } from "@/lib/guest-credentials";
+import { findGuestByPhrase, isGuestCredentialActive, parseGuestCredentialsEnv } from "@/lib/guest-credentials";
 
 const SESSION_COOKIE_NAME = "room_session";
 const DEFAULT_SECRET = "room-development-secret";
@@ -62,8 +62,9 @@ export async function authenticateGuest(phraseInput: string) {
   try {
     const guest = await findGuestByPhrase(phrase);
     if (guest) return guest;
+    return null;
   } catch {
-    // Fallback to env when DB is unavailable.
+    // DB 利用不可時のみ env フォールバック
   }
 
   const envGuest = parseGuestCredentialsEnv().find((item) => item.phrase === phrase);
@@ -73,6 +74,17 @@ export async function authenticateGuest(phraseInput: string) {
     name: envGuest.guestName,
     phrase: envGuest.phrase
   } satisfies Guest;
+}
+
+export async function enforceGuestSessionActiveOrRedirect() {
+  const { redirect } = await import("next/navigation");
+  const session = await getSession();
+  if (!session || session.role !== "guest") return;
+  const active = await isGuestCredentialActive(session.guestId);
+  if (!active) {
+    await clearSession();
+    redirect("/");
+  }
 }
 
 export function authenticateAdmin(secretInput: string) {

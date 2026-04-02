@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import type { RoomNotificationItem, RoomNotificationView } from "@/lib/room-notifications";
+import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
 
 export function RoomNotificationBell() {
@@ -20,6 +21,9 @@ export function RoomNotificationBell() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
   const pushDialogRef = useRef<HTMLDialogElement | null>(null);
+  const [pushPermitVisible, setPushPermitVisible] = useState(false);
+  const [pushPermitBusy, setPushPermitBusy] = useState(false);
+
   const [pushModal, setPushModal] = useState<{
     title: string;
     body: string;
@@ -34,6 +38,46 @@ export function RoomNotificationBell() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  const refreshPushPermitVisibility = useCallback(async () => {
+    if (
+      typeof window === "undefined" ||
+      !("Notification" in window) ||
+      !("PushManager" in window)
+    ) {
+      setPushPermitVisible(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
+      const data = (await res.json()) as { vapidPublicKey?: string | null };
+      if (!data.vapidPublicKey) {
+        setPushPermitVisible(false);
+        return;
+      }
+      setPushPermitVisible(Notification.permission !== "granted");
+    } catch {
+      setPushPermitVisible(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPushPermitVisibility();
+  }, [refreshPushPermitVisibility]);
+
+  useEffect(() => {
+    if (open) void refreshPushPermitVisibility();
+  }, [open, refreshPushPermitVisibility]);
+
+  const onPermitPush = useCallback(async () => {
+    setPushPermitBusy(true);
+    try {
+      const result = await subscribeRoomPush();
+      if (result === "granted") setPushPermitVisible(false);
+    } finally {
+      setPushPermitBusy(false);
+    }
   }, []);
 
   const load = useCallback(async () => {
@@ -188,6 +232,18 @@ export function RoomNotificationBell() {
             ? "新着公開のお知らせと、管理者からの文通です。公開のお知らせは記事を開くと既読になり、返信のお知らせは該当記事で文通を開くと既読になります。手動プッシュは本文モーダルを開いたときに既読になります。"
             : "既読にした通知の履歴です。プッシュ通知のカードをタップすると本文を表示できます。フィルターをもう一度押すと未読一覧に戻ります。"}
         </p>
+        {pushPermitVisible ? (
+          <div className="room-notification-permit-push-wrap">
+            <button
+              type="button"
+              className="room-push-notify-banner-primary"
+              disabled={pushPermitBusy}
+              onClick={() => void onPermitPush()}
+            >
+              通知を許可
+            </button>
+          </div>
+        ) : null}
       </header>
       {items.length === 0 ? (
         <p className="meta admin-notification-empty">

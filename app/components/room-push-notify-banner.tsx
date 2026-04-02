@@ -2,18 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const DEFAULT_DISMISS_KEY = "room-push-banner-dismissed";
+import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
+const DEFAULT_DISMISS_KEY = "room-push-banner-dismissed";
 
 const DEFAULT_DESCRIPTION =
   "プッシュ通知を、スマホやPCの通知バーでも受け取れます（ルームのベル通知と同じ内容です）。";
@@ -90,28 +81,9 @@ export function RoomPushNotifyBanner({
   }, [enabled, dismissed, dismissStorageKey]);
 
   const onEnable = useCallback(async () => {
-    const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
-    const data = (await res.json()) as { vapidPublicKey?: string | null };
-    if (!data.vapidPublicKey) return;
-
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") {
-      setPhase("denied");
-      return;
-    }
-
-    const reg = await navigator.serviceWorker.register("/sw.js");
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(data.vapidPublicKey) as BufferSource
-    });
-
-    await fetch("/api/room/push-subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(sub.toJSON())
-    });
-    setPhase("subscribed");
+    const result = await subscribeRoomPush();
+    if (result === "granted") setPhase("subscribed");
+    else if (result === "denied") setPhase("denied");
   }, []);
 
   const onDismiss = useCallback(() => {
