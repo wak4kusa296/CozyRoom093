@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env*
+!.env.example
+data/*.json
+!data/.gitkeep
+npm-debug.log*
+.vercel
+Thumbs.db
+.DS_Store

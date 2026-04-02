@@ -1,0 +1,40 @@
+{
+  "name": "nobody-room",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "db:up": "docker compose -p nobody_room -f docker-compose.yml up -d db",
+    "db:down": "docker compose -p nobody_room -f docker-compose.yml down",
+    "db:logs": "docker compose -p nobody_room -f docker-compose.yml logs -f db",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:sync-guests": "node scripts/sync-guests-from-env.mjs",
+    "test:db": "npm run db:migrate && node --test tests/db.integration.test.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "gray-matter": "^4.0.3",
+    "next": "^16.2.1",
+    "nodemailer": "^8.0.4",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-icons": "^5.6.0",
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-html": "^16.0.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "@types/nodemailer": "^7.0.11",
+    "@types/react": "^19.2.1",
+    "@types/react-dom": "^19.2.1",
+    "eslint": "^9.38.0",
+    "eslint-config-next": "^16.2.1",
+    "typescript": "^5.9.3"
+  }
+}
