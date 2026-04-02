@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminSession } from "@/app/admin/_auth";
 import { appendLetter, markGuestLetterNotificationsReadForThread } from "@/lib/letters";
 import { pingRoomNotificationSubscriber } from "@/lib/notification-push";
+import { sendWebPushToGuestIds } from "@/lib/web-push-deliver";
 
 export type ReplyLetterState = { ok: boolean; version?: number };
 
@@ -31,6 +32,17 @@ export async function replyLetterAction(
   revalidatePath(`/room/${encodeURIComponent(slug)}`);
 
   pingRoomNotificationSubscriber(guestId);
+
+  try {
+    const preview = body.length > 100 ? `${body.slice(0, 100)}…` : body;
+    await sendWebPushToGuestIds([guestId], {
+      title: "管理人からの便り",
+      body: preview || "文通に返信がありました。",
+      url: `/room/${encodeURIComponent(slug)}`
+    });
+  } catch (e) {
+    console.error("[replyLetterAction] web push", e);
+  }
 
   return { ok: true, version: Date.now() };
 }

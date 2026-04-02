@@ -349,6 +349,20 @@ export async function setContentStatus(slug: string, status: "public" | "private
       await markContentNotificationReadAllGuests(normalizedSlug);
     }
     pingAllRoomNotificationSubscribers();
+    // 初公開のみ Web Push（再公開は送らない）
+    if (!isRepublish) {
+      const title = String(parsed.data.title ?? normalizedSlug);
+      try {
+        const { sendWebPushToAllSubscribers } = await import("@/lib/web-push-deliver");
+        await sendWebPushToAllSubscribers({
+          title,
+          body: "新しい記事が公開されました。",
+          url: `/room/${encodeURIComponent(normalizedSlug)}`
+        });
+      } catch (e) {
+        console.error("[setContentStatus] web push new article", e);
+      }
+    }
   }
 }
 
