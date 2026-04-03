@@ -37,10 +37,14 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
 
   const previewTime = useMemo(() => formatPreviewNow(), []);
 
-  const sortedGuests = useMemo(
-    () => [...guests].sort((a, b) => a.guestId.localeCompare(b.guestId, "ja")),
-    [guests]
-  );
+  const sortedGuests = useMemo(() => {
+    return [...guests].sort((a, b) => {
+      const na = a.guestName.trim() || a.guestId;
+      const nb = b.guestName.trim() || b.guestId;
+      const c = na.localeCompare(nb, "ja");
+      return c !== 0 ? c : a.guestId.localeCompare(b.guestId, "ja");
+    });
+  }, [guests]);
 
   const titlePv = title.trim() || "（タイトル）";
   const leadPv = lead.trim();
@@ -232,6 +236,7 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
                 <ul className="room-push-recipient-list" aria-label="送信相手">
                   {sortedGuests.map((g) => {
                     const on = selectedIds.has(g.guestId);
+                    const label = g.guestName.trim() || g.guestId;
                     return (
                       <li key={g.guestId}>
                         <button
@@ -239,9 +244,10 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
                           className={`room-push-recipient-row${on ? " is-selected" : ""}`}
                           aria-pressed={on}
                           disabled={pending}
+                          title={`ID: ${g.guestId}`}
                           onClick={() => toggleGuest(g.guestId)}
                         >
-                          {g.guestId}
+                          {label}
                         </button>
                       </li>
                     );
