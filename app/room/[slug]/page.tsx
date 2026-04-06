@@ -147,18 +147,16 @@ export default async function ContentPage({
           </div>
           <ArticleBodyHtml html={item.html} />
           <HeartButton slug={normalizedSlug} />
+          <LetterSection
+            slug={normalizedSlug}
+            initialLetters={letters}
+            guestId={targetGuestId}
+            autoOpen={shouldOpenLetters}
+            markThreadReadOnOpen={markThreadReadOnOpen}
+            openButtonId="letters"
+          />
         </div>
       </article>
-
-      <div id="letters" className="letter-block">
-        <LetterSection
-          slug={normalizedSlug}
-          initialLetters={letters}
-          guestId={targetGuestId}
-          autoOpen={shouldOpenLetters}
-          markThreadReadOnOpen={markThreadReadOnOpen}
-        />
-      </div>
 
       {item.magazines.length > 0 ? (
         <div className="article-magazine-banners" aria-label="所属マガジン">

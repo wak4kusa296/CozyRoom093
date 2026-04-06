@@ -182,62 +182,60 @@ export function HeartButton({ slug }: { slug: string }) {
     (state === "idle" && !tapLocked);
 
   return (
-    <div className={actionClass}>
-      <div className={styles.inner}>
-        <p className={styles.hint}>ハートでお気に入りを伝えよう</p>
-        <div className={styles.buttonShell}>
-          <button
-            type="button"
-            className={buttonClass}
-            onClick={onHeartPress}
-            disabled={disabled}
-            aria-label={tapLocked ? "この記事へのハートは上限に達しました" : "ハートを送る"}
-          >
-            <span className={styles.buttonStack}>
-              {ringFilled > 0 ? (
-                <div className={styles.orbitLayer} aria-hidden style={orbitStyle}>
-                  <div key={ringFilled} className={styles.orbitSpinner}>
-                    {Array.from({ length: ringFilled }, (_, i) => (
-                      <span
-                        key={i}
-                        className={styles.orbitArm}
-                        style={{ "--orbit-i": i } as CSSProperties}
-                      >
-                        <MdFavorite className={styles.orbitMi} size={10} color={HEART_COLOR_MAX} />
-                      </span>
-                    ))}
-                  </div>
+    <div className={`${actionClass} ${styles.inner}`}>
+      <p className={styles.hint}>ハートでお気に入りを伝えよう</p>
+      <div className={styles.buttonShell}>
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={onHeartPress}
+          disabled={disabled}
+          aria-label={tapLocked ? "この記事へのハートは上限に達しました" : "ハートを送る"}
+        >
+          <span className={styles.buttonStack}>
+            {ringFilled > 0 ? (
+              <div className={styles.orbitLayer} aria-hidden style={orbitStyle}>
+                <div key={ringFilled} className={styles.orbitSpinner}>
+                  {Array.from({ length: ringFilled }, (_, i) => (
+                    <span
+                      key={i}
+                      className={styles.orbitArm}
+                      style={{ "--orbit-i": i } as CSSProperties}
+                    >
+                      <MdFavorite className={styles.orbitMi} size={10} color={HEART_COLOR_MAX} />
+                    </span>
+                  ))}
                 </div>
-              ) : null}
-              <span className={styles.buttonIconBreathe} aria-hidden="true">
-                <span className={styles.buttonIconWrap}>
-                  <MdFavorite className={styles.buttonIconMi} size={30} color={HEART_COLOR_MAX} />
-                </span>
+              </div>
+            ) : null}
+            <span className={styles.buttonIconBreathe} aria-hidden="true">
+              <span className={styles.buttonIconWrap}>
+                <MdFavorite className={styles.buttonIconMi} size={30} color={HEART_COLOR_MAX} />
               </span>
             </span>
-          </button>
-          <div className={styles.particleRoot} aria-hidden="true">
-          {particles.map((p) => (
-            <span
-              key={p.id}
-              className={styles.particle}
-              style={
-                {
-                  "--tx": `${p.tx}px`,
-                  "--ty": `${p.ty}px`,
-                  "--r": p.r,
-                  "--float-dur": `${p.durationMs}ms`,
-                  "--float-delay": `${p.delayMs}ms`
-                } as CSSProperties
-              }
-            >
-              <MdFavorite className={styles.particleMi} size={24} color={HEART_COLOR_MAX} />
-            </span>
-          ))}
-          </div>
+          </span>
+        </button>
+        <div className={styles.particleRoot} aria-hidden="true">
+        {particles.map((p) => (
+          <span
+            key={p.id}
+            className={styles.particle}
+            style={
+              {
+                "--tx": `${p.tx}px`,
+                "--ty": `${p.ty}px`,
+                "--r": p.r,
+                "--float-dur": `${p.durationMs}ms`,
+                "--float-delay": `${p.delayMs}ms`
+              } as CSSProperties
+            }
+          >
+            <MdFavorite className={styles.particleMi} size={24} color={HEART_COLOR_MAX} />
+          </span>
+        ))}
         </div>
-        {showLabel ? <p className={`${styles.label} meta`}>{label}</p> : null}
       </div>
+      {showLabel ? <p className={`${styles.label} meta`}>{label}</p> : null}
     </div>
   );
 }

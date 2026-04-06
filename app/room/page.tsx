@@ -77,13 +77,11 @@ export default async function RoomPage({
                 </div>
                 <div className="article-sticky-title-block">
                   <p className="meta">{formatSiteDateTime(latest.date)}</p>
-                  <h2>{latest.title}</h2>
+                  <h1>{latest.title}</h1>
                 </div>
               </div>
               {latestDetail ? <ArticleBodyHtml html={latestDetail.html} /> : null}
               {latest ? <HeartButton slug={latest.slug} /> : null}
-            </div>
-            <div className="letter-block">
               <LetterSection slug={latest.slug} initialLetters={latestLetters} />
             </div>
           </article>
