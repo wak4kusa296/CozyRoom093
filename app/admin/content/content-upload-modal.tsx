@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
+import { useEffect, useId, useRef, useState } from "react";
 
 export function ContentUploadModal({
   action
@@ -10,6 +11,9 @@ export function ContentUploadModal({
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("");
   const fileInputId = useId();
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(dialogRef, open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
@@ -28,6 +32,7 @@ export function ContentUploadModal({
       {open ? (
         <div className="admin-magazine-modal-backdrop" onClick={() => setOpen(false)}>
           <section
+            ref={dialogRef}
             className="admin-upload-modal"
             role="dialog"
             aria-modal="true"

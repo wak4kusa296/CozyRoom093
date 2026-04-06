@@ -3,15 +3,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
   overflow: visible;
 }
 
 .hint {
-  margin: 0 0 20px;
+  margin: 0;
+  padding-bottom: var(--s-2);
   max-width: 20rem;
   text-align: center;
-  color: rgba(22, 22, 22, 0.78);
+  color: var(--color-fg);
   font-weight: 600;
   line-height: 1.45;
 }
@@ -33,11 +33,9 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 0;
-  margin-top: 28px;
-  padding: 36px 0;
+  padding: var(--s-4) 0;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   background: unset;
   background-color: unset;
   border-image: none;
@@ -49,7 +47,8 @@
 }
 
 .label {
-  margin: 10px 0 0;
+  margin-top: 0;
+  padding-top: var(--s-2);
   max-width: 16rem;
   text-align: center;
   border: none;
@@ -57,7 +56,7 @@
   border-color: transparent;
   border-image: none;
   outline: none;
-  color: rgba(22, 22, 22, 1);
+  color: var(--color-fg);
   font-weight: 700;
   transition: color 0.25s ease, transform 0.2s ease;
 }
@@ -73,7 +72,7 @@
 }
 
 .actionError .label {
-  color: rgba(22, 22, 22, 0.55);
+  color: var(--color-fg-sub);
   font-weight: 700;
 }
 
@@ -85,7 +84,7 @@
   min-height: 76px;
   padding: 0;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--r-full);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -237,7 +236,7 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid hsl(345deg 72% 48%);
+  outline: 2px solid var(--color-red);
   outline-offset: 4px;
 }
 

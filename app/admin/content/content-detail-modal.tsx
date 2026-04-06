@@ -1,6 +1,7 @@
 "use client";
 
 import { readAdminJson } from "@/lib/admin-read-json";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useEffect, useId, useRef, useState } from "react";
 import { MagazineMultiToggle } from "@/app/admin/content/magazine-multi-toggle";
 
@@ -51,6 +52,9 @@ export function ContentDetailModal({
 }: DetailModalProps) {
   const [open, setOpen] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(dialogRef, open, closeModal);
   const [replaceFileName, setReplaceFileName] = useState("");
   const [thumbUploading, setThumbUploading] = useState(false);
   const [thumbError, setThumbError] = useState<string | null>(null);
@@ -128,6 +132,7 @@ export function ContentDetailModal({
       {open ? (
         <div className="admin-magazine-modal-backdrop" onClick={closeModal}>
           <section
+            ref={dialogRef}
             className="admin-magazine-settings-modal admin-content-detail-modal"
             role="dialog"
             aria-modal="true"

@@ -3,7 +3,8 @@
 import { AppLoadingOverlay } from "@/app/components/app-loading-wave";
 import { RoomBrand } from "@/app/components/room-brand";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 export function HomePageClient() {
   const [phrase, setPhrase] = useState("");
@@ -14,6 +15,9 @@ export function HomePageClient() {
   const [recoverModalOpen, setRecoverModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [entering, setEntering] = useState(false);
+  const recoveryDialogRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(recoveryDialogRef, recoverModalOpen, closeRecoverModal);
 
   useEffect(() => {
     if (!recoverModalOpen) return;
@@ -120,6 +124,7 @@ export function HomePageClient() {
       {recoverModalOpen ? (
         <div className="recovery-modal-backdrop" onClick={closeRecoverModal}>
           <section
+            ref={recoveryDialogRef}
             className="recovery-modal"
             role="dialog"
             aria-modal="true"
