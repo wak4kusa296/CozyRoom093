@@ -1,5 +1,6 @@
 "use client";
 
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export function MagazineMultiToggle({
@@ -16,6 +17,9 @@ export function MagazineMultiToggle({
   const [selected, setSelected] = useState<string[]>(normalizedInitial);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(dialogRef, open, () => closeModal(true));
 
   useEffect(() => {
     setSelected(normalizedInitial);
@@ -65,6 +69,7 @@ export function MagazineMultiToggle({
       {open ? (
         <div className="admin-magazine-modal-backdrop" onClick={() => closeModal(true)}>
           <section
+            ref={dialogRef}
             className="admin-magazine-modal"
             role="dialog"
             aria-modal="true"

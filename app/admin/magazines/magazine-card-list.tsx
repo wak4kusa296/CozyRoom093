@@ -1,6 +1,7 @@
 "use client";
 
 import { readAdminJson } from "@/lib/admin-read-json";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type MagazineItem = {
@@ -39,6 +40,8 @@ export function MagazineCardList({
   const [draggingSlug, setDraggingSlug] = useState<string | null>(null);
   const [usageDeltaMap, setUsageDeltaMap] = useState(new Map<string, number>());
   const orderFormRef = useRef<HTMLFormElement | null>(null);
+  const settingsDialogRef = useRef<HTMLElement>(null);
+  const managerDialogRef = useRef<HTMLElement>(null);
   const itemElementMapRef = useRef(new Map<string, HTMLLIElement>());
   const previousTopBySlugRef = useRef(new Map<string, number>());
   const activePointerIdRef = useRef<number | null>(null);
@@ -58,6 +61,9 @@ export function MagazineCardList({
     () => magazines.find((magazine) => magazine.id === activeId) ?? null,
     [magazines, activeId]
   );
+
+  useFocusTrap(settingsDialogRef, !!activeMagazine, closeMagazineModal);
+  useFocusTrap(managerDialogRef, !!(activeMagazine && managerOpen), closeManagerModal);
 
   useEffect(() => {
     if (!activeId) return;
@@ -265,6 +271,7 @@ export function MagazineCardList({
       {activeMagazine ? (
         <div className="admin-magazine-modal-backdrop" onClick={closeMagazineModal}>
           <section
+            ref={settingsDialogRef}
             className="admin-magazine-settings-modal admin-content-detail-modal"
             role="dialog"
             aria-modal="true"
@@ -443,6 +450,7 @@ export function MagazineCardList({
       {activeMagazine && managerOpen ? (
         <div className="admin-magazine-modal-backdrop" onClick={closeManagerModal}>
           <section
+            ref={managerDialogRef}
             className="admin-magazine-modal"
             role="dialog"
             aria-modal="true"

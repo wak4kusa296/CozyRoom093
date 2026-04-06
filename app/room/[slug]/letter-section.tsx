@@ -2,7 +2,8 @@
 
 import { AppLoadingOverlay } from "@/app/components/app-loading-wave";
 import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
-import { FormEvent, useEffect, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 type Letter = {
   sender: string;
@@ -37,6 +38,9 @@ export function LetterSection({
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(dialogRef, open, () => setOpen(false));
 
   useEffect(() => {
     setLetters(initialLetters);
@@ -113,6 +117,7 @@ export function LetterSection({
         <div className="letter-modal-backdrop" onClick={() => setOpen(false)}>
           {sending ? <AppLoadingOverlay label="投函中" zIndex={2200} /> : null}
           <section
+            ref={dialogRef}
             className="letters letter-modal"
             role="dialog"
             aria-modal="true"
