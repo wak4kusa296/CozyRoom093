@@ -25,7 +25,8 @@ export function LetterSection({
   initialLetters,
   guestId,
   autoOpen = false,
-  markThreadReadOnOpen = false
+  markThreadReadOnOpen = false,
+  openButtonId
 }: {
   slug: string;
   initialLetters: Letter[];
@@ -33,6 +34,7 @@ export function LetterSection({
   autoOpen?: boolean;
   /** ゲスト本人が文通モーダルを開いたとき、該当スレッドの「返信」通知を既読にする */
   markThreadReadOnOpen?: boolean;
+  openButtonId?: string;
 }) {
   const [letters, setLetters] = useState(initialLetters);
   const [body, setBody] = useState("");
@@ -109,7 +111,7 @@ export function LetterSection({
 
   return (
     <>
-      <button type="button" className="letter-open-button" onClick={() => setOpen(true)}>
+      <button id={openButtonId} type="button" className="letter-open-button" onClick={() => setOpen(true)}>
         この文章をもとに、お手紙を書く
       </button>
 

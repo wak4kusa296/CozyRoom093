@@ -63,6 +63,8 @@ body {
 }
 
 body {
+  margin: 0;
+  padding: 0;
   border-radius: var(--r-md);
   background: var(--color-bg);
   color: var(--color-fg);
@@ -119,8 +121,15 @@ p {
 }
 
 hr {
-  padding-top: var(--s-9);
-  padding-bottom: var(--s-9);
+  height: 1px;
+  margin-top: 7px;
+  margin-bottom: 7px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top: 1px solid rgba(128, 128, 128, 1);
+  border-right: 0 none transparent;
+  border-bottom: 0 none transparent;
+  border-left: 0 none transparent;
 }
 
 main {
@@ -2248,8 +2257,8 @@ main.article-wrap {
   --main-pad-inline: calc(64px + var(--main-pad-balance));
   padding-left: var(--main-pad-inline);
   padding-right: var(--main-pad-inline);
-  column-gap: var(--s-7);
-  row-gap: var(--s-7);
+  column-gap: var(--s-9);
+  row-gap: var(--s-9);
   background: var(--color-bg);
 }
 
@@ -2655,7 +2664,8 @@ main.article-wrap {
 .latest-article {
   display: grid;
   gap: 0;
-  padding-bottom: 120px;
+  height: fit-content;
+  padding-bottom: 0px;
 }
 
 .article-main-block {
@@ -2903,16 +2913,8 @@ img.article-magazine-banner-thumb-img {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
-.latest-article > .letter-block {
-  padding-top: 80px;
-}
-
-.article-wrap > .letter-block {
-  margin-top: 0;
-}
-
-.letter-block {
-  width: 100%;
+.latest-article .article-main-block > .letter-open-button {
+  margin-top: 0px;
 }
 
 /* /room/search ミニマム検索 */
@@ -3223,9 +3225,10 @@ img.article-magazine-banner-thumb-img {
   height: auto;
   min-height: 0;
   padding: var(--s-3) var(--s-4) var(--s-4);
-  display: grid;
+  display: flex;
+  flex-direction: column;
   align-content: start;
-  gap: var(--s-2);
+  gap: var(--s-1);
   justify-content: start;
 }
 
@@ -3238,6 +3241,12 @@ img.article-magazine-banner-thumb-img {
 .bookshelf-track--magazine-works-featured .bookshelf-item--works-lead .bookshelf-item-body h3 {
   font-size: var(--size-body);
   line-height: 1.45;
+  font-weight: 600;
+}
+
+.bookshelf-track--magazine-works-featured .bookshelf-item--works-lead .bookshelf-item-body > p,
+.bookshelf-track--magazine-works-featured .bookshelf-item--works-lead .bookshelf-item-body > h3 {
+  margin: 0 !important;
 }
 
 .bookshelf-item-excerpt {
@@ -3284,8 +3293,9 @@ img.article-magazine-banner-thumb-img {
 .bookshelf-track--magazine-works-featured .bookshelf-item--works-grid-card .bookshelf-item-body {
   box-sizing: border-box;
   padding: 10px 14px 14px;
-  display: grid;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   height: auto;
   min-height: 0;
 }
@@ -3294,11 +3304,14 @@ img.article-magazine-banner-thumb-img {
   font-size: var(--font-sm);
   line-height: 14px;
   color: var(--color-fg-sub);
+  margin: 0 !important;
 }
 
 .bookshelf-track--magazine-works-featured .bookshelf-item--works-grid-card .bookshelf-item-body h3 {
   font-size: var(--size-body);
   line-height: 1.45;
+  font-weight: 600;
+  margin: 0 !important;
 }
 
 @media (max-width: 640px) {
@@ -3418,6 +3431,8 @@ img.article-magazine-banner-thumb-img {
 .article-body {
   display: block;
   margin-top: var(--s-4);
+  --article-body-gap: var(--s-2);
+  --article-body-heading-top-margin: calc(var(--s-7) + var(--s-1));
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
@@ -3432,7 +3447,7 @@ img.article-magazine-banner-thumb-img {
 }
 
 .article-body :where(h1, h2, h3, h4, h5, h6) {
-  margin: 1.15em 0 0.45em;
+  margin: var(--article-body-heading-top-margin) 0 0;
   line-height: 1.4;
   font-size: var(--size-body);
   font-weight: 400;
@@ -3442,49 +3457,51 @@ img.article-magazine-banner-thumb-img {
 .article-body h1 {
   font-size: var(--size-title);
   font-weight: 700;
-  margin-top: 1.65em;
 }
 
 .article-body h2 {
   font-size: var(--size-title);
   font-weight: 700;
-  margin-top: 1.45em;
 }
 
 .article-body h3 {
   font-size: var(--size-body);
   font-weight: 700;
-  margin-top: 1.3em;
 }
 
 .article-body h4 {
   font-size: var(--size-body);
   font-weight: 600;
-  margin-top: 1.15em;
 }
 
 .article-body h5 {
   font-size: var(--size-body);
   font-weight: 500;
-  margin-top: 1.05em;
 }
 
 .article-body h6 {
   font-size: var(--size-body);
   font-weight: 400;
-  margin-top: 1em;
 }
 
 .article-body > :first-child {
-  margin-top: 0;
+  margin-top: var(--article-body-heading-top-margin);
 }
 
 .article-body :where(p, ul, ol, blockquote, pre, table) {
-  margin: 0.65em 0;
+  margin: 0;
 }
 
 .article-body p + p {
-  margin-top: 1.25em;
+  margin-top: var(--article-body-gap);
+}
+
+.article-body > * + * {
+  margin-top: var(--article-body-gap);
+}
+
+.article-body > :where(h1, h2, h3, h4, h5, h6) {
+  margin-top: var(--article-body-heading-top-margin);
 }
 
 .article-body .article-tags {
