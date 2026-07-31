@@ -18,6 +18,13 @@ export function useFocusTrap(
   onClose: () => void
 ) {
   const triggerRef = useRef<Element | null>(null);
+  /*
+   * onClose は呼び出し側でインライン関数として渡されることが多く、毎レンダーで別物になる。
+   * 依存に入れるとキー入力のたびに effect が張り直され、初期フォーカスが再実行されて
+   * 入力欄からフォーカスが外れる（モバイルではキーボードが閉じる）。
+   */
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,7 +43,7 @@ export function useFocusTrap(
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -67,5 +74,5 @@ export function useFocusTrap(
         triggerRef.current.focus();
       }
     };
-  }, [isOpen, onClose, dialogRef]);
+  }, [isOpen, dialogRef]);
 }
