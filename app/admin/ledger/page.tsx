@@ -378,74 +378,62 @@ export default async function AdminLedgerPage({
                   <tr key={item.guestId} className={item.isActive ? undefined : "admin-row-inactive"}>
                     <td data-label="ユーザーID">{item.guestId}</td>
                     <td data-label="表示名">
-                      <div className="admin-phrase-line">
-                        <span>{item.guestName}</span>
-                        <details className="admin-edit-disclosure">
-                          <summary className="admin-edit-summary" aria-label="表示名編集を開く">
-                            <span className="material-symbols-outlined admin-nav-icon" aria-hidden="true">
-                              edit
-                            </span>
-                          </summary>
-                          <AdminLedgerInlineEditForm action={updateNameAction} className="admin-inline-form admin-inline-form-compact">
-                            <input type="hidden" name="guestId" value={item.guestId} />
-                            <input
-                              name="guestName"
-                              type="text"
-                              lang="ja"
-                              autoComplete="name"
-                              defaultValue={item.guestName}
-                              required
-                            />
-                            <button type="submit" className="sr-only" tabIndex={-1}>
-                              保存
-                            </button>
-                          </AdminLedgerInlineEditForm>
-                        </details>
-                      </div>
+                      <AdminLedgerInlineEditForm
+                        action={updateNameAction}
+                        className="admin-inline-form admin-inline-form-compact admin-ledger-field-form"
+                      >
+                        <input type="hidden" name="guestId" value={item.guestId} />
+                        <input
+                          name="guestName"
+                          type="text"
+                          lang="ja"
+                          autoComplete="name"
+                          defaultValue={item.guestName}
+                          required
+                          aria-label="表示名"
+                        />
+                        <button type="submit" className="sr-only" tabIndex={-1}>
+                          保存
+                        </button>
+                      </AdminLedgerInlineEditForm>
                     </td>
                     <td data-label="管理人メモ">
-                      <div className="admin-phrase-line">
-                        <span className="admin-memo-text">{item.adminMemo || "—"}</span>
-                        <details className="admin-edit-disclosure">
-                          <summary className="admin-edit-summary" aria-label="管理人メモの編集を開く">
-                            <span className="material-symbols-outlined admin-nav-icon" aria-hidden="true">
-                              edit
-                            </span>
-                          </summary>
-                          <AdminLedgerInlineEditForm action={updateAdminMemoAction} className="admin-inline-form admin-inline-form-compact">
-                            <input type="hidden" name="guestId" value={item.guestId} />
-                            <textarea
-                              name="adminMemo"
-                              defaultValue={item.adminMemo}
-                              rows={2}
-                              className="admin-phrase-editor"
-                              lang="ja"
-                            />
-                            <button type="submit" className="sr-only" tabIndex={-1}>
-                              保存
-                            </button>
-                          </AdminLedgerInlineEditForm>
-                        </details>
-                      </div>
+                      <AdminLedgerInlineEditForm
+                        action={updateAdminMemoAction}
+                        className="admin-inline-form admin-inline-form-compact admin-ledger-field-form"
+                      >
+                        <input type="hidden" name="guestId" value={item.guestId} />
+                        <textarea
+                          name="adminMemo"
+                          defaultValue={item.adminMemo}
+                          rows={2}
+                          className="admin-phrase-editor"
+                          lang="ja"
+                          aria-label="管理人メモ"
+                        />
+                        <button type="submit" className="sr-only" tabIndex={-1}>
+                          保存
+                        </button>
+                      </AdminLedgerInlineEditForm>
                     </td>
                     <td data-label="秘密の言葉">
-                      <div className="admin-phrase-line">
-                        <code className="admin-phrase-text">{item.phrase}</code>
-                        <details className="admin-edit-disclosure">
-                          <summary className="admin-edit-summary" aria-label="秘密の言葉の編集を開く">
-                            <span className="material-symbols-outlined admin-nav-icon" aria-hidden="true">
-                              edit
-                            </span>
-                          </summary>
-                          <AdminLedgerInlineEditForm action={updatePhraseAction} className="admin-inline-form admin-inline-form-compact">
-                            <input type="hidden" name="guestId" value={item.guestId} />
-                            <textarea name="phrase" defaultValue={item.phrase} required rows={1} className="admin-phrase-editor" />
-                            <button type="submit" className="sr-only" tabIndex={-1}>
-                              保存
-                            </button>
-                          </AdminLedgerInlineEditForm>
-                        </details>
-                      </div>
+                      <AdminLedgerInlineEditForm
+                        action={updatePhraseAction}
+                        className="admin-inline-form admin-inline-form-compact admin-ledger-field-form"
+                      >
+                        <input type="hidden" name="guestId" value={item.guestId} />
+                        <textarea
+                          name="phrase"
+                          defaultValue={item.phrase}
+                          required
+                          rows={1}
+                          className="admin-phrase-editor"
+                          aria-label="秘密の言葉"
+                        />
+                        <button type="submit" className="sr-only" tabIndex={-1}>
+                          保存
+                        </button>
+                      </AdminLedgerInlineEditForm>
                     </td>
                     <td data-label="状態">
                       <ActiveStatusSelect guestId={item.guestId} isActive={item.isActive} action={setGuestActiveAction} />

@@ -5566,6 +5566,40 @@ blockquote blockquote::before {
   line-height: 1.5;
 }
 
+/* 台帳ユーザー行: 表示名・メモ・秘密の言葉を常時入力欄で表示 */
+.admin-ledger-field-form {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-ledger-field-form input,
+.admin-ledger-field-form textarea.admin-phrase-editor {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-fg-mute);
+  border-radius: var(--r-sm);
+  background: var(--color-white);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.admin-ledger-field-form input[name="guestName"] {
+  resize: none;
+}
+
+.admin-ledger-field-form textarea[name="phrase"] {
+  min-height: 32px;
+  resize: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .admin-delete-confirm-backdrop {
   position: fixed;
   inset: 0;
@@ -5741,8 +5775,8 @@ blockquote blockquote::before {
     max-width: none;
   }
 
-  .admin-ledger-user-table th:nth-child(4),
-  .admin-ledger-user-table td:nth-child(4) {
+  .admin-ledger-user-table th:nth-child(5),
+  .admin-ledger-user-table td:nth-child(5) {
     width: 48px;
     min-width: 48px;
     max-width: 48px;
@@ -5752,7 +5786,7 @@ blockquote blockquote::before {
     text-align: center;
   }
 
-  .admin-ledger-user-table th:nth-child(4) {
+  .admin-ledger-user-table th:nth-child(5) {
     font-size: var(--font-sm);
     line-height: 1.2;
     letter-spacing: -0.02em;
@@ -5760,7 +5794,7 @@ blockquote blockquote::before {
     word-break: keep-all;
   }
 
-  .admin-ledger-user-table td:nth-child(4) .admin-inline-form.admin-inline-form-compact {
+  .admin-ledger-user-table td:nth-child(5) .admin-inline-form.admin-inline-form-compact {
     width: auto;
     max-width: 100%;
     margin-inline: auto;
@@ -5769,8 +5803,8 @@ blockquote blockquote::before {
     gap: 0;
   }
 
-  .admin-ledger-user-table th:nth-child(5),
-  .admin-ledger-user-table td:nth-child(5) {
+  .admin-ledger-user-table th:nth-child(6),
+  .admin-ledger-user-table td:nth-child(6) {
     width: fit-content;
     min-width: 0;
     max-width: none;
@@ -5804,13 +5838,8 @@ blockquote blockquote::before {
     overflow-wrap: anywhere;
   }
 
-  .admin-ledger-user-table td:nth-child(2) .admin-phrase-line > span:first-child {
-    flex: 1 1 auto;
-    min-width: 0;
+  .admin-ledger-user-table .admin-ledger-field-form {
     width: 100%;
-    word-break: normal;
-    overflow-wrap: anywhere;
-    line-break: strict;
   }
 
   .admin-ledger-user-table td:nth-child(1) {
@@ -6296,28 +6325,14 @@ blockquote blockquote::before {
     white-space: nowrap;
   }
 
-  /* 台帳・表示名列のみ: 日本語を折り返し（英数字列の省略ルールは 3 列目の code に任せる） */
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2) .admin-phrase-line,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-phrase-line {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2) .admin-phrase-line > :first-child,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-phrase-line > :first-child {
+  /* 台帳・表示名〜秘密の言葉: 常時入力欄 */
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2) .admin-ledger-field-form,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-ledger-field-form,
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-ledger-field-form,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-ledger-field-form,
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4) .admin-ledger-field-form,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) .admin-ledger-field-form {
     width: 100%;
-    overflow: visible;
-    text-overflow: unset;
-    white-space: normal;
-    word-break: normal;
-    overflow-wrap: anywhere;
-    line-break: strict;
-  }
-
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2) .admin-phrase-line:has(.admin-edit-disclosure[open]),
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-phrase-line:has(.admin-edit-disclosure[open]) {
-    flex-wrap: wrap;
-    align-items: flex-start;
   }
 
   .admin-table-mobile-card .admin-phrase-line:has(.admin-edit-disclosure[open]) .admin-inline-form-compact,
@@ -6348,7 +6363,8 @@ blockquote blockquote::before {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "ledger-id ledger-id"
-      "ledger-name ledger-phrase"
+      "ledger-name ledger-memo"
+      "ledger-phrase ledger-phrase"
       "ledger-status ledger-actions";
     column-gap: 10px;
     row-gap: var(--s-3);
@@ -6378,55 +6394,163 @@ blockquote blockquote::before {
 
   .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3),
   .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) {
-    grid-area: ledger-phrase;
+    grid-area: ledger-memo;
   }
 
   .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4),
   .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) {
+    grid-area: ledger-phrase;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
     grid-area: ledger-status;
     justify-self: start;
     align-self: end;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5),
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(6),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(6) {
     grid-area: ledger-actions;
     justify-self: end;
     align-self: end;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4) .admin-inline-form.admin-inline-form-compact,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) .admin-inline-form.admin-inline-form-compact {
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5) .admin-inline-form.admin-inline-form-compact,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) .admin-inline-form.admin-inline-form-compact {
     justify-content: flex-start;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5) .admin-delete-guest-form,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) .admin-delete-guest-form {
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(6) .admin-delete-guest-form,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(6) .admin-delete-guest-form {
     justify-content: flex-end;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-phrase-text,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-phrase-text {
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(2) .admin-ledger-field-form input,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-ledger-field-form input,
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-ledger-field-form textarea,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-ledger-field-form textarea,
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4) .admin-ledger-field-form textarea,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) .admin-ledger-field-form textarea {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* タブレット（縦・横）ではユーザー台帳を行テーブルではなくカードで表示する */
+@media (min-width: 721px) and (max-width: 1180px) {
+  .admin-ledger-user-table.admin-table-mobile-cards {
     display: block;
     width: 100%;
     max-width: 100%;
-    white-space: normal;
+    min-width: 0;
+    border-collapse: separate;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards colgroup,
+  .admin-ledger-user-table.admin-table-mobile-cards thead {
+    display: none;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding: 0;
+    border: none;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "ledger-id ledger-id"
+      "ledger-name ledger-memo"
+      "ledger-phrase ledger-phrase"
+      "ledger-status ledger-actions";
+    column-gap: var(--s-4);
+    row-gap: var(--s-3);
+    align-items: start;
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--color-fg-mute);
+    border-radius: var(--r-md);
+    background: transparent;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody tr.admin-row-inactive {
+    background: rgba(128, 128, 128, 0.14);
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 24px;
+    padding: 0;
+    border-bottom: none;
+    background: transparent;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td::before {
+    content: none;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(1) {
+    grid-area: ledger-id;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: break-all;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-phrase-line,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-phrase-line {
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) {
+    grid-area: ledger-name;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) {
+    grid-area: ledger-memo;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) {
+    grid-area: ledger-phrase;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
+    grid-area: ledger-status;
+    justify-self: start;
+    align-self: end;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(6) {
+    grid-area: ledger-actions;
+    justify-self: end;
+    align-self: end;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards .admin-phrase-line {
     flex-wrap: nowrap;
-    align-items: flex-start;
-    align-content: flex-start;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(3) .admin-phrase-line > :first-child,
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-phrase-line > :first-child {
-    overflow: visible;
-    text-overflow: unset;
-    white-space: normal;
+  .admin-ledger-user-table.admin-table-mobile-cards .admin-ledger-field-form {
+    width: 100%;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(2) .admin-ledger-field-form input,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(3) .admin-ledger-field-form textarea,
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) .admin-ledger-field-form textarea {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) .admin-inline-form.admin-inline-form-compact {
+    justify-content: flex-start;
+  }
+
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(6) .admin-delete-guest-form {
+    justify-content: flex-end;
   }
 }
 
@@ -6437,20 +6561,21 @@ blockquote blockquote::before {
     grid-template-areas:
       "ledger-id ledger-id"
       "ledger-name ledger-name"
+      "ledger-memo ledger-memo"
       "ledger-phrase ledger-phrase"
       "ledger-status ledger-actions";
     row-gap: 10px;
     align-items: start;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(4),
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(4) {
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
     justify-self: start;
     align-self: end;
   }
 
-  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(5),
-  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(5) {
+  .admin-ledger-user-table.admin-table-mobile-card tbody td:nth-child(6),
+  .admin-ledger-user-table.admin-table-mobile-cards tbody td:nth-child(6) {
     justify-self: end;
     align-self: end;
   }
