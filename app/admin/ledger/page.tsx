@@ -33,6 +33,11 @@ import {
 } from "@/lib/passphrase-rules";
 import { revalidatePath } from "next/cache";
 
+/** 画面は使える状態のまま、失敗の理由をサーバーログに残す（本番の未適用マイグレーション等の切り分け用） */
+function logLedgerFailure(action: string, error: unknown) {
+  console.error(`[admin/ledger] ${action}`, error);
+}
+
 async function addGuestAction(formData: FormData) {
   "use server";
   await requireAdminSession();
@@ -46,8 +51,8 @@ async function addGuestAction(formData: FormData) {
       phrase,
       adminMemo: String(formData.get("adminMemo") ?? "")
     });
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("addGuest", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -60,8 +65,8 @@ async function updatePhraseAction(formData: FormData) {
     const phrase = String(formData.get("phrase") ?? "");
     if (secretPhraseContainsWhitespace(phrase) || !isValidSecretPhrase(phrase)) return;
     await updateGuestPhrase(String(formData.get("guestId") ?? ""), phrase);
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("updatePhrase", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -72,8 +77,8 @@ async function updateNameAction(formData: FormData) {
 
   try {
     await updateGuestName(String(formData.get("guestId") ?? ""), String(formData.get("guestName") ?? ""));
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("updateName", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -84,8 +89,8 @@ async function updateAdminMemoAction(formData: FormData) {
 
   try {
     await updateGuestAdminMemo(String(formData.get("guestId") ?? ""), String(formData.get("adminMemo") ?? ""));
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("updateAdminMemo", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -97,8 +102,8 @@ async function setGuestActiveAction(formData: FormData) {
   const activeValue = String(formData.get("isActive") ?? "");
   try {
     await setGuestActive(String(formData.get("guestId") ?? ""), activeValue === "true");
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("setGuestActive", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -113,8 +118,8 @@ async function addGateAction(formData: FormData) {
       phrase: String(formData.get("phrase") ?? ""),
       label: String(formData.get("label") ?? "")
     });
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("addGate", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -126,8 +131,8 @@ async function setGateActiveAction(formData: FormData) {
   const activeValue = String(formData.get("isActive") ?? "");
   try {
     await setRegistrationGateActive(String(formData.get("gateId") ?? ""), activeValue === "true");
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("setGateActive", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -138,8 +143,8 @@ async function updateGatePhraseAction(formData: FormData) {
 
   try {
     await updateRegistrationGatePhrase(String(formData.get("gateId") ?? ""), String(formData.get("phrase") ?? ""));
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("updateGatePhrase", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -150,8 +155,8 @@ async function updateGateLabelAction(formData: FormData) {
 
   try {
     await updateRegistrationGateLabel(String(formData.get("gateId") ?? ""), String(formData.get("label") ?? ""));
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("updateGateLabel", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -162,8 +167,8 @@ async function deleteGateAction(formData: FormData) {
 
   try {
     await deleteRegistrationGate(String(formData.get("gateId") ?? ""));
-  } catch {
-    // Keep screen usable even if constraints fail.
+  } catch (error) {
+    logLedgerFailure("deleteGate", error);
   }
   revalidatePath("/admin/ledger");
 }
@@ -176,8 +181,8 @@ export default async function AdminLedgerPage({
   await requireAdminSession();
   try {
     await syncGuestCredentialsFromEnv();
-  } catch {
-    // Keep page available even if DB synchronization fails.
+  } catch (error) {
+    logLedgerFailure("syncGuestCredentialsFromEnv", error);
   }
 
   const resolvedSearchParams = await searchParams;
@@ -186,9 +191,17 @@ export default async function AdminLedgerPage({
     : resolvedSearchParams.status ?? "all";
 
   const credentials = await listGuestCredentialsWithStatus().catch(
-    (): Awaited<ReturnType<typeof listGuestCredentialsWithStatus>> => []
+    (error): Awaited<ReturnType<typeof listGuestCredentialsWithStatus>> => {
+      logLedgerFailure("listGuestCredentialsWithStatus", error);
+      return [];
+    }
   );
-  const gates = await listRegistrationGates().catch((): Awaited<ReturnType<typeof listRegistrationGates>> => []);
+  const gates = await listRegistrationGates().catch(
+    (error): Awaited<ReturnType<typeof listRegistrationGates>> => {
+      logLedgerFailure("listRegistrationGates", error);
+      return [];
+    }
+  );
   const filteredCredentials = credentials.filter((item) => {
     if (statusFilter === "active") return item.isActive;
     if (statusFilter === "inactive") return !item.isActive;
