@@ -334,7 +334,7 @@ export default async function AdminLedgerPage({
               <input name="phrase" required />
             </label>
             <label>
-              管理人メモ（任意・ゲストには見えません）
+              管理人と一番関わった場面（任意・ゲストには見えません）
               <textarea name="adminMemo" rows={2} lang="ja" className="admin-phrase-editor" />
             </label>
             <button type="submit" className="admin-add-button">
@@ -365,7 +365,7 @@ export default async function AdminLedgerPage({
                 <tr>
                   <th>ユーザーID</th>
                   <th>表示名</th>
-                  <th>管理人メモ</th>
+                  <th>管理人と一番関わった場面</th>
                   <th>秘密の言葉</th>
                   <th>状態</th>
                   <th scope="col" className="admin-table-col-actions">
@@ -397,7 +397,7 @@ export default async function AdminLedgerPage({
                         </button>
                       </AdminLedgerInlineEditForm>
                     </td>
-                    <td data-label="管理人メモ">
+                    <td data-label="管理人と一番関わった場面">
                       <AdminLedgerInlineEditForm
                         action={updateAdminMemoAction}
                         className="admin-inline-form admin-inline-form-compact admin-ledger-field-form"
@@ -409,7 +409,8 @@ export default async function AdminLedgerPage({
                           rows={2}
                           className="admin-phrase-editor"
                           lang="ja"
-                          aria-label="管理人メモ"
+                          aria-label="管理人と一番関わった場面"
+                          placeholder="管理人と一番関わった場面"
                         />
                         <button type="submit" className="sr-only" tabIndex={-1}>
                           保存
