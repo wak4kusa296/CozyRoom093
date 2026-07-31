@@ -140,7 +140,7 @@ export function RoomLettersClient({
             </p>
           </div>
         </div>
-        <button type="button" className="letter-open-button" onClick={() => setComposeOpen(true)}>
+        <button type="button" className="letter-open-button ui-button ui-button--letter" onClick={() => setComposeOpen(true)}>
           新しく手紙を書く
         </button>
       </section>
@@ -206,7 +206,7 @@ export function RoomLettersClient({
           {sending ? <AppLoadingOverlay label="投函中" zIndex={2200} /> : null}
           <section
             ref={composeDialogRef}
-            className="letters letter-modal"
+            className="letters letter-modal ui-modal"
             role="dialog"
             aria-modal="true"
             aria-label="新しいお手紙"
@@ -231,6 +231,7 @@ export function RoomLettersClient({
                 <span className="room-letters-compose-label">件名</span>
                 <input
                   type="text"
+                  className="ui-field"
                   value={composeTitle}
                   onChange={(e) => setComposeTitle(e.target.value)}
                   maxLength={LETTER_TITLE_MAX_LENGTH}
@@ -244,6 +245,7 @@ export function RoomLettersClient({
               <label className="room-letters-compose-field">
                 <span className="room-letters-compose-label">本文</span>
                 <textarea
+                  className="ui-field"
                   value={composeBody}
                   onChange={(e) => setComposeBody(e.target.value)}
                   rows={5}
@@ -260,7 +262,7 @@ export function RoomLettersClient({
                   {composeError}
                 </p>
               ) : null}
-              <button type="submit" className="letter-submit-button" disabled={sending}>
+              <button type="submit" className="letter-submit-button ui-button ui-button--letter" disabled={sending}>
                 {sending ? "投函しています..." : "投函する"}
               </button>
             </form>

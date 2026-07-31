@@ -1,5 +1,6 @@
 import { getDbPool } from "@/lib/db";
 import type { Guest } from "@/lib/auth";
+import { getCredentialLookupHash } from "@/lib/credential-lookup";
 import { hashSecret, verifySecret } from "@/lib/secret-hash";
 
 export type GuestCredential = {
@@ -93,11 +94,18 @@ export async function syncGuestCredentialsFromEnv() {
 
       await client.query(
         `
-        INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active)
-        VALUES ($1, $2, $3, TRUE)
+        INSERT INTO guest_credentials (
+          guest_id, guest_name, credential_hash, is_active, credential_lookup_hash
+        )
+        VALUES ($1, $2, $3, TRUE, $4)
         ON CONFLICT (guest_id) DO NOTHING
         `,
-        [item.guestId, item.guestName, await hashSecret(item.phrase)]
+        [
+          item.guestId,
+          item.guestName,
+          await hashSecret(item.phrase),
+          getCredentialLookupHash(item.phrase, "guest")
+        ]
       );
     }
     await client.query("COMMIT");
@@ -151,6 +159,7 @@ export async function findGuestByPhrase(phraseInput: string): Promise<Guest | nu
   if (!phrase) return null;
 
   const pool = getDbPool();
+  const lookupHash = getCredentialLookupHash(phrase, "guest");
   const result = await pool.query<{
     guest_id: string;
     guest_name: string;
@@ -159,11 +168,29 @@ export async function findGuestByPhrase(phraseInput: string): Promise<Guest | nu
     `
     SELECT guest_id, guest_name, credential_hash
     FROM guest_credentials
-    WHERE is_active = TRUE
-    `
+    WHERE is_active = TRUE AND credential_lookup_hash = $1
+    `,
+    [lookupHash]
   );
 
   for (const row of result.rows) {
+    if (await verifySecret(phrase, row.credential_hash)) {
+      return { id: row.guest_id, name: row.guest_name };
+    }
+  }
+
+  // Rows written before migration 016 cannot be backfilled because their
+  // salted scrypt hashes intentionally contain no recoverable phrase.
+  const legacyResult = await pool.query<{
+    guest_id: string;
+    guest_name: string;
+    credential_hash: string;
+  }>(`
+    SELECT guest_id, guest_name, credential_hash
+    FROM guest_credentials
+    WHERE is_active = TRUE AND credential_lookup_hash IS NULL
+  `);
+  for (const row of legacyResult.rows) {
     if (await verifySecret(phrase, row.credential_hash)) {
       return { id: row.guest_id, name: row.guest_name };
     }
@@ -193,10 +220,12 @@ export async function insertGuestCredential(input: {
   try {
     await pool.query(
       `
-      INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active, admin_memo)
-      VALUES ($1, $2, $3, TRUE, $4)
+      INSERT INTO guest_credentials (
+        guest_id, guest_name, credential_hash, is_active, admin_memo, credential_lookup_hash
+      )
+      VALUES ($1, $2, $3, TRUE, $4, $5)
       `,
-      [guestId, guestName, await hashSecret(phrase), adminMemo]
+      [guestId, guestName, await hashSecret(phrase), adminMemo, getCredentialLookupHash(phrase, "guest")]
     );
     return "ok";
   } catch (e: unknown) {
@@ -222,15 +251,16 @@ export async function upsertGuestCredential(input: {
   const pool = getDbPool();
   await pool.query(
     `
-    INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active)
-    VALUES ($1, $2, $3, TRUE)
+    INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active, credential_lookup_hash)
+    VALUES ($1, $2, $3, TRUE, $4)
     ON CONFLICT (guest_id)
     DO UPDATE SET
       guest_name = EXCLUDED.guest_name,
       credential_hash = EXCLUDED.credential_hash,
+      credential_lookup_hash = EXCLUDED.credential_lookup_hash,
       updated_at = NOW()
     `,
-    [guestId, guestName, await hashSecret(phrase)]
+    [guestId, guestName, await hashSecret(phrase), getCredentialLookupHash(phrase, "guest")]
   );
 }
 
@@ -243,10 +273,10 @@ export async function updateGuestPhrase(guestIdInput: string, phraseInput: strin
   const result = await pool.query(
     `
     UPDATE guest_credentials
-    SET credential_hash = $2, updated_at = NOW()
+    SET credential_hash = $2, credential_lookup_hash = $3, updated_at = NOW()
     WHERE guest_id = $1
     `,
-    [guestId, await hashSecret(phrase)]
+    [guestId, await hashSecret(phrase), getCredentialLookupHash(phrase, "guest")]
   );
   return Boolean(result.rowCount);
 }

@@ -51,7 +51,7 @@ export function LetterSection({
 
   function requestClose(): void {
     if (sending) return;
-    if (viewerRole === "guest" && body.trim() && !window.confirm("入力中の本文を破棄して閉じますか？")) return;
+    if (body.trim() && !window.confirm("入力中の本文を破棄して閉じますか？")) return;
     setOpenState(false);
   }
 
@@ -129,14 +129,14 @@ export function LetterSection({
 
   return (
     <>
-      {hideOpenButton ? null : <button id={openButtonId} type="button" className="letter-open-button" onClick={() => setOpenState(true)}>この文章をもとに、お手紙を書く</button>}
+      {hideOpenButton ? null : <button id={openButtonId} type="button" className="letter-open-button ui-button ui-button--letter" onClick={() => setOpenState(true)}>この文章をもとに、お手紙を書く</button>}
 
       {open ? (
         <div className="letter-modal-backdrop" onClick={requestClose}>
           {sending ? <AppLoadingOverlay label="投函中" zIndex={2200} /> : null}
           <section
             ref={dialogRef}
-            className="letters letter-modal"
+            className="letters letter-modal ui-modal"
             role="dialog"
             aria-modal="true"
             aria-label="文通欄"
@@ -170,6 +170,7 @@ export function LetterSection({
             <form onSubmit={onSubmit} className="stack">
               <p className="meta">お手持ちのメモアプリで整えてから、投函してみましょう。</p>
               <textarea
+                className="ui-field"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={4}
@@ -179,7 +180,7 @@ export function LetterSection({
               />
               <p className="meta">{body.length}/{LETTER_BODY_MAX_LENGTH}</p>
               {error ? <p className="letter-form-error" role="alert">{error}</p> : null}
-              <button type="submit" className="letter-submit-button" disabled={sending}>
+              <button type="submit" className="letter-submit-button ui-button ui-button--letter" disabled={sending}>
                 {sending ? "投函しています..." : "投函する"}
               </button>
             </form>

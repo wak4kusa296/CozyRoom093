@@ -689,7 +689,7 @@ main {
 /* RoomNotificationBell（ポータル） */
 .admin-notification-panel--portal .admin-notification-when {
   font-size: var(--font-sm);
-  line-height: 10px;
+  line-height: 1.4;
 }
 
 .admin-notification-panel--portal .room-notification-reply-lead {
@@ -920,7 +920,6 @@ main {
   text-align: left;
   color: inherit;
   min-width: 0;
-  outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1386,7 +1385,6 @@ main {
 
 .room-push-input:focus,
 .room-push-textarea:focus {
-  outline: none;
   border-color: var(--color-fg-mute);
   box-shadow: none;
 }
@@ -1987,7 +1985,6 @@ main {
   padding: var(--s-6) 18px;
   text-decoration: none;
   color: inherit;
-  outline: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -2107,7 +2104,6 @@ main {
 }
 
 .admin-notification-guest-trigger:focus {
-  outline: none;
   border-color: var(--color-fg-sub);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-fg) 6%, transparent);
 }
@@ -2265,7 +2261,6 @@ input,
 textarea {
   width: 100%;
   border: none;
-  outline: none;
   background: var(--color-bg);
   color: var(--color-fg);
   padding: var(--s-4);
@@ -2293,7 +2288,6 @@ textarea {
 
 button {
   border: none;
-  outline: none;
   background: var(--color-bg);
   color: var(--color-fg);
   padding: var(--s-3) var(--s-4);
@@ -2842,7 +2836,7 @@ button.sidebar-logout-button {
 .article-sticky-title-block > p.meta {
   font-size: var(--font-sm);
   height: fit-content;
-  line-height: 10px;
+  line-height: 1.4;
   margin-top: 0;
 }
 
@@ -3054,7 +3048,6 @@ img.article-magazine-banner-thumb-img {
 }
 
 .room-search-input:focus {
-  outline: none;
   border-color: var(--color-fg-sub);
 }
 
@@ -5670,7 +5663,6 @@ blockquote blockquote::before {
 .admin-delete-confirm-submit:hover,
 .admin-delete-confirm-submit:focus-visible {
   filter: brightness(0.95);
-  outline: none;
 }
 
 .admin-delete-guest-form {
@@ -5698,7 +5690,6 @@ blockquote blockquote::before {
   border: none !important;
   background: transparent !important;
   color: var(--color-red);
-  outline: none;
 }
 
 .admin-delete-guest-button:focus-visible {
@@ -7048,336 +7039,6 @@ blockquote blockquote::before {
   .pwa-install-banner-primary:hover {
     background: var(--color-fg);
     border-color: var(--color-fg);
-  }
-}
-
-/*
- * ── Design-system foundation (Phase 5) ─────────────────────────────────────
- * Responsive convention for new work:
- *   compact: max-width 640px; tablet: 641px–1023px; desktop: min-width 1024px.
- * Existing component breakpoints remain untouched to avoid cascade regressions.
- */
-
-/* Keyboard-only focus remains visible even when older component rules reset it. */
-:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
-  outline: var(--focus-ring) !important;
-  outline-offset: var(--focus-offset);
-}
-
-/* Text links communicate that they are interactive without changing card/nav links. */
-:where(.text-link, .article-body a):is(:hover, :focus-visible) {
-  text-decoration-line: underline;
-  text-decoration-thickness: 0.08em;
-  text-underline-offset: 0.16em;
-}
-
-/* Shared primitives opt components into consistent controls incrementally. */
-.ui-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-4);
-  border: 1px solid transparent;
-  border-radius: var(--r-md);
-  font: inherit;
-  font-weight: 600;
-  line-height: 1.4;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.ui-button:disabled,
-.ui-button[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.ui-button--primary {
-  background: var(--color-fg);
-  border-color: var(--color-fg);
-  color: var(--color-white);
-}
-
-.ui-button--primary:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) {
-  background: #343434;
-  border-color: #343434;
-}
-
-.ui-button--secondary {
-  background: var(--color-white);
-  border-color: var(--color-border);
-  color: var(--color-fg);
-}
-
-.ui-button--secondary:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) {
-  background: color-mix(in srgb, var(--color-fg) 4%, var(--color-white));
-  border-color: var(--color-fg-sub);
-}
-
-/* Use for letter flows when they are migrated; this preserves the warm accent. */
-.ui-button--letter {
-  background: var(--color-red);
-  border-color: var(--color-red);
-  color: var(--color-white);
-}
-
-.ui-field {
-  width: 100%;
-  min-height: 40px;
-  padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-md);
-  background: var(--color-white);
-  color: var(--color-fg);
-  font: inherit;
-  line-height: 1.5;
-}
-
-textarea.ui-field {
-  min-height: 96px;
-  resize: vertical;
-}
-
-.ui-modal {
-  width: min(calc(100% - 2 * var(--s-4)), 640px);
-  max-height: min(80vh, 720px);
-  overflow: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-lg);
-  background: var(--color-white);
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--color-fg) 18%, transparent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ui-button {
-    transition: none;
-  }
-}
-
-/* Standalone letter archive */
-.room-letters-compose,
-.room-letters-inbox {
-  margin: var(--s-5) 0;
-  padding: var(--s-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-lg);
-  background: var(--color-white);
-}
-
-.room-letters-thread-list {
-  display: grid;
-  gap: var(--s-3);
-  margin: var(--s-4) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.room-letters-thread-card {
-  display: grid;
-  gap: var(--s-2);
-  width: 100%;
-  padding: var(--s-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-md);
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.room-letters-thread-card:hover {
-  border-color: var(--color-fg-sub);
-  background: color-mix(in srgb, var(--color-bg) 80%, var(--color-white));
-}
-
-.room-letters-thread-topline,
-.room-letters-thread-topline-end,
-.room-letters-thread-preview {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-}
-
-.room-letters-thread-topline {
-  justify-content: space-between;
-}
-
-.room-letters-thread-title {
-  font-weight: 700;
-}
-
-.room-letters-thread-meta,
-.room-letters-thread-when,
-.room-letters-thread-preview {
-  color: var(--color-fg-sub);
-  font-size: var(--font-sm);
-}
-
-.room-letters-thread-preview > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.room-letters-thread-sender {
-  flex: none;
-  font-weight: 700;
-}
-
-.room-letters-thread-badge {
-  display: inline-grid;
-  min-width: 1.5em;
-  min-height: 1.5em;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--color-blue);
-  color: var(--color-white);
-  font-size: var(--font-sm);
-  font-weight: 700;
-}
-
-.room-letters-compose-field {
-  display: grid;
-  gap: var(--s-1);
-}
-
-.room-letters-compose-label {
-  font-weight: 700;
-}
-
-.room-letters-page {
-  width: min(100% - 2 * var(--s-4), 960px);
-  margin: 0 auto;
-  padding: var(--s-6) 0 var(--s-8);
-}
-
-.room-letters-header,
-.letters-section-heading {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--s-3);
-  align-items: start;
-}
-
-.room-letters-header {
-  display: block;
-  margin: var(--s-4) 0 var(--s-6);
-}
-
-.letters-section-icon {
-  color: var(--color-blue);
-}
-
-.letters-section-kicker,
-.letters-section-lead,
-.letters-field-counter,
-.admin-letters-field-counter {
-  color: var(--color-fg-sub);
-  font-size: var(--font-sm);
-}
-
-.letters-section-kicker {
-  margin-bottom: var(--s-1);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.letters-section-lead {
-  margin-top: var(--s-1);
-  line-height: 1.5;
-}
-
-.letters-field-counter,
-.admin-letters-field-counter {
-  justify-self: end;
-}
-
-.letter-form-error {
-  margin: 0;
-  color: var(--color-red);
-  font-weight: 700;
-  line-height: 1.5;
-}
-
-.room-letters-compose-field input,
-.admin-letters-compose-field input,
-.admin-letters-compose-field textarea {
-  width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-md);
-  padding: var(--s-2) var(--s-3);
-  background: var(--color-white);
-  color: var(--color-fg);
-  font: inherit;
-  line-height: 1.5;
-}
-
-.admin-letters-compose-section {
-  margin: var(--s-5) 0;
-  padding: var(--s-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-lg);
-  background: var(--color-white);
-}
-
-.admin-letters-compose-section h2 {
-  margin-bottom: var(--s-4);
-}
-
-.admin-letters-compose-form,
-.admin-letters-compose-field {
-  display: grid;
-  gap: var(--s-2);
-}
-
-.admin-letters-field-label,
-.admin-letters-compose-hint {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-
-.admin-letters-field-label {
-  font-weight: 700;
-}
-
-.admin-letters-compose-hint {
-  color: var(--color-fg-sub);
-  font-size: var(--font-sm);
-  line-height: 1.5;
-}
-
-@media (max-width: 640px) {
-  .room-letters-page {
-    width: min(100% - 2 * var(--s-3), 960px);
-    padding-top: var(--s-4);
-  }
-
-  .room-letters-compose,
-  .room-letters-inbox,
-  .admin-letters-compose-section {
-    padding: var(--s-4);
-  }
-
-  .admin-letters-row-link {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s-1);
-  }
-
-  .admin-letters-row-status {
-    justify-self: start;
-  }
-
-  .letter-modal-header {
-    flex-wrap: wrap;
-  }
-
-  .admin-letter-open-article {
-    order: 3;
-    width: 100%;
   }
 }
 

@@ -1,0 +1,272 @@
+﻿/* Standalone letter archive */
+.room-letters-compose,
+.room-letters-inbox {
+  margin: var(--s-5) 0;
+  padding: var(--s-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  background: var(--color-white);
+}
+
+.room-letters-thread-list {
+  display: grid;
+  gap: var(--s-3);
+  margin: var(--s-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-letters-thread-card {
+  display: grid;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-letters-thread-card:hover {
+  border-color: var(--color-fg-sub);
+  background: color-mix(in srgb, var(--color-bg) 80%, var(--color-white));
+}
+
+.room-letters-thread-topline,
+.room-letters-thread-topline-end,
+.room-letters-thread-preview {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.room-letters-thread-topline {
+  justify-content: space-between;
+}
+
+.room-letters-thread-title {
+  font-weight: 700;
+}
+
+.room-letters-thread-meta,
+.room-letters-thread-when,
+.room-letters-thread-preview {
+  color: var(--color-fg-sub);
+  font-size: var(--font-sm);
+}
+
+.room-letters-thread-preview > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-letters-thread-sender {
+  flex: none;
+  font-weight: 700;
+}
+
+.room-letters-thread-badge {
+  display: inline-grid;
+  min-width: 1.5em;
+  min-height: 1.5em;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-blue);
+  color: var(--color-white);
+  font-size: var(--font-sm);
+  font-weight: 700;
+}
+
+.room-letters-compose-field {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.room-letters-compose-label {
+  font-weight: 700;
+}
+
+.room-letters-page {
+  width: min(100% - 2 * var(--s-4), 960px);
+  margin: 0 auto;
+  padding: var(--s-6) 0 var(--s-8);
+}
+
+.room-letters-header,
+.letters-section-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: start;
+}
+
+.room-letters-header {
+  display: block;
+  margin: var(--s-4) 0 var(--s-6);
+}
+
+.letters-section-icon {
+  color: var(--color-blue);
+}
+
+.letters-section-kicker,
+.letters-section-lead,
+.letters-field-counter,
+.admin-letters-field-counter {
+  color: var(--color-fg-sub);
+  font-size: var(--font-sm);
+}
+
+.letters-section-kicker {
+  margin-bottom: var(--s-1);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.letters-section-lead {
+  margin-top: var(--s-1);
+  line-height: 1.5;
+}
+
+.letters-field-counter,
+.admin-letters-field-counter {
+  justify-self: end;
+}
+
+.letter-form-error {
+  margin: 0;
+  color: var(--color-red);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.room-letters-compose-field input,
+.admin-letters-compose-field input,
+.admin-letters-compose-field textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-3);
+  background: var(--color-white);
+  color: var(--color-fg);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.admin-letters-compose-section {
+  margin: var(--s-5) 0;
+  padding: var(--s-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  background: var(--color-white);
+}
+
+.admin-letters-compose-section h2 {
+  margin-bottom: var(--s-4);
+}
+
+.admin-letters-compose-form,
+.admin-letters-compose-field {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.admin-letters-field-label,
+.admin-letters-compose-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.admin-letters-field-label {
+  font-weight: 700;
+}
+
+.admin-letters-compose-hint {
+  color: var(--color-fg-sub);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+}
+
+/* The primitive marks this dialog as a shared modal without overriding its airmail treatment. */
+.letter-modal.ui-modal {
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border: 6px solid transparent;
+  background:
+    linear-gradient(var(--color-white), var(--color-white)) padding-box,
+    repeating-linear-gradient(
+      45deg,
+      var(--color-red) 0 10px,
+      var(--color-white) 10px 15px,
+      var(--color-blue) 15px 25px,
+      var(--color-white) 25px 30px
+    ) border-box;
+  box-shadow: none;
+}
+
+.admin-letters-row-preview,
+.admin-letters-row-when {
+  overflow: hidden;
+  color: var(--color-fg-sub);
+  font-size: var(--font-sm);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  .admin-letters-row-link {
+    grid-template-columns: minmax(0, 1fr) minmax(96px, 0.7fr) minmax(0, 1.5fr) auto;
+  }
+
+  .admin-letters-row-when {
+    grid-column: 3;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-letters-row-link {
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 0.7fr) minmax(0, 1.5fr) auto auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .room-letters-page {
+    width: min(100% - 2 * var(--s-3), 960px);
+    padding-top: var(--s-4);
+  }
+
+  .room-letters-compose,
+  .room-letters-inbox,
+  .admin-letters-compose-section {
+    padding: var(--s-4);
+  }
+
+  .admin-letters-row-link {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-1);
+  }
+
+  .admin-letters-row-status {
+    justify-self: start;
+  }
+
+  .admin-letters-row-preview,
+  .admin-letters-row-when {
+    grid-column: 1;
+  }
+
+  .letter-modal-header {
+    flex-wrap: wrap;
+  }
+
+  .admin-letter-open-article {
+    order: 3;
+    width: 100%;
+  }
+}
+

@@ -1,6 +1,6 @@
 import { listBroadcastPushes, pushAppliesToGuest } from "@/lib/broadcast-pushes";
 import { listPublicContents } from "@/lib/content";
-import { getGuestAccountStartedAtIso, listGuestCredentials } from "@/lib/guest-credentials";
+import { getGuestAccountStartedAtIso } from "@/lib/guest-credentials";
 import { isEventStrictlyBeforeCutoff } from "@/lib/notification-account-window";
 import { listAdminLetterEventsForGuest } from "@/lib/letters";
 import { getDbPool } from "@/lib/db";
@@ -52,29 +52,18 @@ export async function markContentNotificationReadAllGuests(slug: string): Promis
   if (!trimmed) return;
   const id = `content|${trimmed}`;
   const now = new Date();
-  const guests = await listGuestCredentials();
   const pool = getDbPool();
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    for (const g of guests) {
-      await client.query(
-        `
-        INSERT INTO guest_notification_reads (guest_id, notification_id, read_at)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (guest_id, notification_id)
-        DO UPDATE SET read_at = EXCLUDED.read_at
-        `,
-        [g.guestId, id, now]
-      );
-    }
-    await client.query("COMMIT");
-  } catch (e) {
-    await client.query("ROLLBACK");
-    throw e;
-  } finally {
-    client.release();
-  }
+  await pool.query(
+    `
+    INSERT INTO guest_notification_reads (guest_id, notification_id, read_at)
+    SELECT guest_id, $1, $2
+    FROM guest_credentials
+    WHERE is_active = TRUE
+    ON CONFLICT (guest_id, notification_id)
+    DO UPDATE SET read_at = EXCLUDED.read_at
+    `,
+    [id, now]
+  );
 }
 
 export async function ensureGuestNotificationBaseline(

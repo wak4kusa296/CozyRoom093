@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { PwaInstallBanner } from "@/app/components/pwa-install-banner";
 import { PushNavigationListener } from "@/app/components/push-navigation-listener";
 import "./globals.css";
+import "./styles/primitives.css";
+import "./styles/letters.css";
 
 export const viewport: Viewport = {
   themeColor: "#eeeeee",

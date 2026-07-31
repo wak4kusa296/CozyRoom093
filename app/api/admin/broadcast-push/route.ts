@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { appendBroadcastPush } from "@/lib/broadcast-pushes";
+import { appendBroadcastPush, isValidOptionalUrl } from "@/lib/broadcast-pushes";
 import type { GuestCredential } from "@/lib/guest-credentials";
 import { listGuestCredentials } from "@/lib/guest-credentials";
 import { pingAllRoomNotificationSubscribers, pingRoomNotificationSubscribers } from "@/lib/notification-push";
 import { sendWebPushForBroadcast, type WebPushBroadcastResult } from "@/lib/web-push-broadcast";
+import { jsonError, jsonOk, parseJsonBody } from "@/lib/http-json";
 
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "admin") {
-    return NextResponse.json({ ok: false }, { status: 403 });
+    return jsonError("forbidden", "管理者権限が必要です。", { status: 403 });
   }
 
-  const body = (await request.json()) as {
+  const body = await parseJsonBody<{
     title?: string;
     body?: string;
     audience?: string;
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
     linkUrl?: string;
     linkLabel?: string;
     imageUrl?: string;
-  };
+  }>(request);
+  if (!body) return jsonError("invalid_json", "送信内容を読み取れませんでした。", { status: 400 });
 
   const title = String(body.title ?? "");
   const text = String(body.body ?? "");
@@ -30,13 +32,18 @@ export async function POST(request: Request) {
   const guestIds = Array.isArray(guestIdsRaw)
     ? guestIdsRaw.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean)
     : [];
+  if (!isValidOptionalUrl(body.linkUrl)) {
+    return jsonError("invalid_link_url", "リンク URL はサイト内パスまたは http(s) URL にしてください。", {
+      status: 400
+    });
+  }
 
   try {
     const valid = new Set((await listGuestCredentials()).map((g: GuestCredential) => g.guestId));
     if (audience === "selected") {
       for (const id of guestIds) {
         if (!valid.has(id)) {
-          return NextResponse.json({ ok: false, error: "unknown_guest" }, { status: 400 });
+          return jsonError("unknown_guest", "宛先が無効です。再読み込みしてください。", { status: 400 });
         }
       }
     }
@@ -71,17 +78,17 @@ export async function POST(request: Request) {
       };
     }
 
-    return NextResponse.json({ ok: true, id: row.id, sentAt: row.sentAt, webPush });
+    return jsonOk({ id: row.id, sentAt: row.sentAt, webPush });
   } catch (e) {
     if (e instanceof Error) {
       if (e.message === "title_and_body_required") {
-        return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 });
+        return jsonError("invalid_body", "タイトルと本文が必要です。", { status: 400 });
       }
       if (e.message === "guests_required") {
-        return NextResponse.json({ ok: false, error: "guests_required" }, { status: 400 });
+        return jsonError("guests_required", "宛先を1人以上選んでください。", { status: 400 });
       }
       if (e.message === "lead_required") {
-        return NextResponse.json({ ok: false, error: "lead_required" }, { status: 400 });
+        return jsonError("lead_required", "リード文が必要です。", { status: 400 });
       }
     }
     throw e;

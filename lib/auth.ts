@@ -6,6 +6,7 @@ const SESSION_COOKIE_NAME = "room_session";
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
 type SessionRole = "guest" | "admin";
+type SessionSecretName = "SESSION_SECRET" | "ADMIN_SESSION_SECRET";
 
 export type SessionPayload = {
   guestId: string;
@@ -25,31 +26,49 @@ export class AuthConfigurationError extends Error {
   }
 }
 
-function requiredSecret(name: "SESSION_SECRET" | "ADMIN_SECRET"): string {
+function requiredSecret(name: SessionSecretName | "ADMIN_SECRET"): string {
   const secret = process.env[name]?.trim();
   if (!secret || secret.length < 16) throw new AuthConfigurationError();
   return secret;
 }
 
-function getSecret() {
+function getSessionSecret(role: SessionRole): string {
+  if (role === "admin" && process.env.ADMIN_SESSION_SECRET?.trim()) {
+    return requiredSecret("ADMIN_SESSION_SECRET");
+  }
   return requiredSecret("SESSION_SECRET");
 }
 
-function sign(value: string) {
-  return createHmac("sha256", getSecret()).update(value).digest("hex");
+function sign(value: string, role: SessionRole): string {
+  return createHmac("sha256", getSessionSecret(role)).update(value).digest("hex");
 }
 
-function encode(payload: SessionPayload) {
+function encode(payload: SessionPayload): string {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = sign(body);
+  const signature = sign(body, payload.role);
   return `${body}.${signature}`;
+}
+
+function isSessionPayload(value: unknown): value is SessionPayload {
+  if (!value || typeof value !== "object") return false;
+  const payload = value as Partial<SessionPayload>;
+  return (
+    typeof payload.guestId === "string" &&
+    typeof payload.guestName === "string" &&
+    (payload.role === "guest" || payload.role === "admin") &&
+    typeof payload.exp === "number" &&
+    Number.isFinite(payload.exp)
+  );
 }
 
 function decode(token: string): SessionPayload | null {
   const [body, signature] = token.split(".");
   if (!body || !signature) return null;
 
-  const expected = sign(body);
+  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as unknown;
+  if (!isSessionPayload(payload)) return null;
+
+  const expected = sign(body, payload.role);
   const a = Buffer.from(signature, "utf8");
   const b = Buffer.from(expected, "utf8");
 
@@ -57,7 +76,6 @@ function decode(token: string): SessionPayload | null {
     return null;
   }
 
-  const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as SessionPayload;
   if (payload.exp < Date.now()) {
     return null;
   }

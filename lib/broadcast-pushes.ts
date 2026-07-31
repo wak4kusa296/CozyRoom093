@@ -56,6 +56,11 @@ function normalizeOptionalUrl(value: unknown): string | undefined {
   return undefined;
 }
 
+/** 空欄、サイト内パス、HTTP(S) URL のみをリンク先として受け付ける。 */
+export function isValidOptionalUrl(value: unknown): boolean {
+  return !isNonEmptyString(value) || normalizeOptionalUrl(value) !== undefined;
+}
+
 type BroadcastRow = {
   id: string;
   title: string;

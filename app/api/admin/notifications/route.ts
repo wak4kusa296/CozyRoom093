@@ -15,11 +15,12 @@ import {
   markSignupNotificationRead
 } from "@/lib/signup-notifications";
 import { pingAdminNotificationSubscribers } from "@/lib/notification-push";
+import { jsonError, jsonOk, parseJsonBody } from "@/lib/http-json";
 
 export async function GET(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "admin") {
-    return NextResponse.json({ ok: false }, { status: 403 });
+    return jsonError("forbidden", "管理者権限が必要です。", { status: 403 });
   }
 
   const viewParam = new URL(request.url).searchParams.get("view");
@@ -85,8 +86,7 @@ export async function GET(request: Request) {
   const letterUnread = letterEvents.filter((e) => !letterReads[e.id]).length;
   const unreadCount = recoveryUnread + signupUnread + letterUnread;
 
-  return NextResponse.json({
-    ok: true,
+  return jsonOk({
     items,
     unreadCount,
     view,
@@ -98,32 +98,33 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "admin") {
-    return NextResponse.json({ ok: false }, { status: 403 });
+    return jsonError("forbidden", "管理者権限が必要です。", { status: 403 });
   }
 
-  const body = (await request.json()) as { id?: string };
+  const body = await parseJsonBody<{ id?: string }>(request);
+  if (!body) return jsonError("invalid_json", "送信内容を読み取れませんでした。", { status: 400 });
   const id = String(body.id ?? "").trim();
   if (!id) {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return jsonError("invalid_notification_id", "通知を指定してください。", { status: 400 });
   }
 
   const recoveryOk = await markRecoveryRequestRead(id);
   if (recoveryOk) {
     pingAdminNotificationSubscribers();
-    return NextResponse.json({ ok: true });
+    return jsonOk({});
   }
 
   const signupOk = await markSignupNotificationRead(id);
   if (signupOk) {
     pingAdminNotificationSubscribers();
-    return NextResponse.json({ ok: true });
+    return jsonOk({});
   }
 
   if (id.startsWith("letter|")) {
     await markLetterNotificationRead(id);
     pingAdminNotificationSubscribers();
-    return NextResponse.json({ ok: true });
+    return jsonOk({});
   }
 
-  return NextResponse.json({ ok: false }, { status: 404 });
+  return jsonError("notification_not_found", "指定した通知が見つかりません。", { status: 404 });
 }

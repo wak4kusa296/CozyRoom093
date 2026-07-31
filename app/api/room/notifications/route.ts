@@ -11,11 +11,12 @@ import {
 import { pingRoomNotificationSubscriber } from "@/lib/notification-push";
 import { buildHistoryRoomNotifications, buildUnreadRoomNotifications } from "@/lib/room-notifications-query";
 import type { RoomNotificationView } from "@/lib/room-notifications";
+import { jsonError, jsonOk, parseJsonBody } from "@/lib/http-json";
 
 export async function GET(request: Request) {
   const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    return jsonError("unauthorized", "ログインが必要です。", { status: 401 });
   }
 
   const viewParam = new URL(request.url).searchParams.get("view");
@@ -47,8 +48,7 @@ export async function GET(request: Request) {
       ? await buildHistoryRoomNotifications(session.guestId, reads, slugBySlugKey, registrationCutoffIso)
       : unreadItems;
 
-  return NextResponse.json({
-    ok: true,
+  return jsonOk({
     items,
     unreadCount,
     view
@@ -58,16 +58,17 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const session = await getSessionOrRevokeIfGuestInactive();
   if (!session) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    return jsonError("unauthorized", "ログインが必要です。", { status: 401 });
   }
 
-  const body = (await request.json()) as { id?: string };
+  const body = await parseJsonBody<{ id?: string }>(request);
+  if (!body) return jsonError("invalid_json", "送信内容を読み取れませんでした。", { status: 400 });
   const id = String(body.id ?? "").trim();
   if (!id) {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return jsonError("invalid_notification_id", "通知を指定してください。", { status: 400 });
   }
 
   await markGuestNotificationRead(session.guestId, id);
   pingRoomNotificationSubscriber(session.guestId);
-  return NextResponse.json({ ok: true });
+  return jsonOk({});
 }

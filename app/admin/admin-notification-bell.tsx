@@ -62,6 +62,7 @@ export function AdminNotificationBell() {
   const [pushPermitVisible, setPushPermitVisible] = useState(false);
   const [pushPermitBusy, setPushPermitBusy] = useState(false);
   const [pushPermitMessage, setPushPermitMessage] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
   const isOutsideTargetIgnored = useCallback(
@@ -130,23 +131,32 @@ export function AdminNotificationBell() {
   }, [refreshPushPermitVisibility]);
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/admin/notifications?view=${viewMode}`, { cache: "no-store" });
-    if (res.status === 403) {
-      setGate("guest");
-      return;
+    try {
+      setNotificationError(null);
+      const res = await fetch(`/api/admin/notifications?view=${viewMode}`, { cache: "no-store" });
+      if (res.status === 403) {
+        setGate("guest");
+        return;
+      }
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        setNotificationError(data?.error?.message ?? "通知を読み込めませんでした。接続を確認して、もう一度お試しください。");
+        return;
+      }
+      setGate("admin");
+      const data = (await res.json()) as {
+        items?: FeedItem[];
+        unreadCount?: number;
+        smtpConfigured?: boolean;
+        recoveryGuestOptions?: RecoveryGuestOption[];
+      };
+      setItems(data.items ?? []);
+      setUnreadCount(data.unreadCount ?? 0);
+      setSmtpConfigured(Boolean(data.smtpConfigured));
+      setRecoveryGuestOptions(Array.isArray(data.recoveryGuestOptions) ? data.recoveryGuestOptions : []);
+    } catch {
+      setNotificationError("通知を読み込めませんでした。接続を確認して、もう一度お試しください。");
     }
-    if (!res.ok) return;
-    setGate("admin");
-    const data = (await res.json()) as {
-      items?: FeedItem[];
-      unreadCount?: number;
-      smtpConfigured?: boolean;
-      recoveryGuestOptions?: RecoveryGuestOption[];
-    };
-    setItems(data.items ?? []);
-    setUnreadCount(data.unreadCount ?? 0);
-    setSmtpConfigured(Boolean(data.smtpConfigured));
-    setRecoveryGuestOptions(Array.isArray(data.recoveryGuestOptions) ? data.recoveryGuestOptions : []);
   }, [viewMode]);
 
   useEffect(() => {
@@ -177,14 +187,19 @@ export function AdminNotificationBell() {
       setUnreadCount((c) => Math.max(0, c - 1));
     }
     try {
+      setNotificationError(null);
       const res = await fetch("/api/admin/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       });
-      if (!res.ok) void load();
-      else void load();
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        setNotificationError(data?.error?.message ?? "通知を既読にできませんでした。もう一度お試しください。");
+      }
+      void load();
     } catch {
+      setNotificationError("通知を既読にできませんでした。もう一度お試しください。");
       void load();
     }
   }
@@ -261,6 +276,7 @@ export function AdminNotificationBell() {
         ref={panelRef}
         className="admin-notification-panel admin-notification-panel--portal"
         role="dialog"
+        aria-modal="true"
         aria-labelledby="admin-notification-title"
         style={{ top: panelPos.top, right: panelPos.right }}
       >
@@ -304,6 +320,11 @@ export function AdminNotificationBell() {
           {pushPermitMessage ? (
             <p className="admin-notification-panel-desc" role="status">
               {pushPermitMessage}
+            </p>
+          ) : null}
+          {notificationError ? (
+            <p className="letter-form-error" role="alert">
+              {notificationError}
             </p>
           ) : null}
           {!smtpConfigured ? (

@@ -120,7 +120,9 @@ export function RoomPushNotifyBanner({
           ブラウザの通知がブロックされています。ブラウザのサイト設定から許可できます。
         </p>
         <button type="button" className="room-push-notify-banner-close" onClick={onDismiss} aria-label="閉じる">
-          ×
+          <span className="material-symbols-outlined" aria-hidden="true">
+            close
+          </span>
         </button>
       </div>
     );
@@ -132,7 +134,9 @@ export function RoomPushNotifyBanner({
           通知の設定を確認できませんでした。接続を確認して、ページを再読み込みしてください。
         </p>
         <button type="button" className="room-push-notify-banner-close" onClick={onDismiss} aria-label="閉じる">
-          ×
+          <span className="material-symbols-outlined" aria-hidden="true">
+            close
+          </span>
         </button>
       </div>
     );

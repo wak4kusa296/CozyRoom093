@@ -21,6 +21,17 @@ function formatPreviewNow() {
   return formatSiteDateTimeWithSeconds(new Date().toISOString());
 }
 
+function isValidLinkUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("/")) return true;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -113,6 +124,10 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
       setMessage("リード文が必要です。");
       return;
     }
+    if (!isValidLinkUrl(linkUrl)) {
+      setMessage("リンク URL はサイト内パス（/...）または http(s) URL にしてください。");
+      return;
+    }
     setPending(true);
     try {
       const guestIds = audience === "selected" ? [...selectedIds] : [];
@@ -132,7 +147,7 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
       });
       const data = (await res.json()) as {
         ok?: boolean;
-        error?: string;
+        error?: { code?: string; message?: string };
         webPush?: {
           skippedReason: "vapid_not_configured" | null;
           targetCount: number;
@@ -141,10 +156,14 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
         };
       };
       if (!res.ok || !data.ok) {
-        if (data.error === "invalid_body") setMessage("タイトルと本文が必要です。");
-        else if (data.error === "lead_required") setMessage("リード文が必要です。");
-        else if (data.error === "guests_required") setMessage("宛先を1人以上選んでください。");
-        else if (data.error === "unknown_guest") setMessage("宛先が無効です。再読み込みしてください。");
+        if (data.error?.code === "invalid_body") setMessage("タイトルと本文が必要です。");
+        else if (data.error?.code === "lead_required") setMessage("リード文が必要です。");
+        else if (data.error?.code === "guests_required") setMessage("宛先を1人以上選んでください。");
+        else if (data.error?.code === "unknown_guest") setMessage("宛先が無効です。再読み込みしてください。");
+        else if (data.error?.code === "invalid_link_url") {
+          setMessage("リンク URL はサイト内パス（/...）または http(s) URL にしてください。");
+        }
+        else if (data.error?.message) setMessage(data.error.message);
         else setMessage("送信に失敗しました。");
         return;
       }
@@ -370,7 +389,7 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
           {pending ? "送信中…" : "送信"}
         </button>
         {message ? (
-          <p className="room-push-msg" role="status">
+          <p className="room-push-msg" role="alert">
             {message}
           </p>
         ) : null}

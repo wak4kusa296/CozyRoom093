@@ -8,6 +8,8 @@ type NotificationShellOptions = {
   bellRef: RefObject<HTMLButtonElement | null>;
   panelRef: RefObject<HTMLDivElement | null>;
   isOutsideTargetIgnored?: (target: EventTarget | null) => boolean;
+  /** ネイティブ dialog 表示中は親パネルのトラップを停止する。 */
+  focusTrapEnabled?: boolean;
 };
 
 /**
@@ -17,7 +19,8 @@ type NotificationShellOptions = {
 export function useNotificationShell({
   bellRef,
   panelRef,
-  isOutsideTargetIgnored
+  isOutsideTargetIgnored,
+  focusTrapEnabled = true
 }: NotificationShellOptions) {
   const [open, setOpen] = useState(false);
   const [panelPos, setPanelPos] = useState({ top: 56, right: 16 });
@@ -28,7 +31,7 @@ export function useNotificationShell({
     () => false
   );
 
-  useFocusTrap(panelRef, open, close);
+  useFocusTrap(panelRef, open && focusTrapEnabled, close, () => focusTrapEnabled);
 
   useLayoutEffect(() => {
     if (!open || !bellRef.current) return;

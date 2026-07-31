@@ -42,7 +42,7 @@ export function AdminLettersComposeForm({
           </span>
           宛先
         </span>
-        <select name="guestId" value={guestId} onChange={(e) => setGuestId(e.target.value)} required>
+        <select name="guestId" className="ui-field" value={guestId} onChange={(e) => setGuestId(e.target.value)} required>
           {guests.map((g) => (
             <option key={g.guestId} value={g.guestId}>
               {g.guestName}
@@ -60,6 +60,7 @@ export function AdminLettersComposeForm({
         <input
           type="text"
           name="title"
+          className="ui-field"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={LETTER_TITLE_MAX_LENGTH}
@@ -79,6 +80,7 @@ export function AdminLettersComposeForm({
         </span>
         <textarea
           name="body"
+          className="ui-field"
           value={body}
           onChange={(event) => setBody(event.target.value)}
           rows={5}
@@ -101,7 +103,7 @@ export function AdminLettersComposeForm({
           {state.error}
         </p>
       ) : null}
-      <button type="submit" className="letter-submit-button" disabled={pending}>
+      <button type="submit" className="letter-submit-button ui-button ui-button--letter" disabled={pending}>
         {pending ? "投函しています..." : "投函する"}
       </button>
     </form>

@@ -307,6 +307,7 @@ export function JoinPageClient() {
                 onBlur={() => {
                   validateGatePhrase(gatePhrase);
                 }}
+                className="ui-field"
                 required
                 disabled={busy}
                 autoComplete="off"
@@ -324,7 +325,7 @@ export function JoinPageClient() {
             ) : null}
 
             <div className="recovery-modal-actions">
-              <button type="submit" className="recovery-modal-submit" disabled={busy || Boolean(gateError)}>
+              <button type="submit" className="recovery-modal-submit ui-button ui-button--primary" disabled={busy || Boolean(gateError)}>
                 {checkingGate ? "確認中…" : "次へ"}
               </button>
             </div>
@@ -339,6 +340,7 @@ export function JoinPageClient() {
               <input
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
+                className="ui-field"
                 required
                 disabled={busy}
                 autoComplete="nickname"
@@ -353,7 +355,7 @@ export function JoinPageClient() {
                 required
                 disabled={busy}
                 rows={3}
-                className="recovery-modal-textarea"
+                className="recovery-modal-textarea ui-field"
               />
             </label>
             <label className="recovery-modal-label">
@@ -366,6 +368,7 @@ export function JoinPageClient() {
                 disabled={busy}
                 autoComplete="email"
                 inputMode="email"
+                className="ui-field"
               />
             </label>
             <label className="recovery-modal-label">
@@ -386,6 +389,7 @@ export function JoinPageClient() {
                 autoComplete="off"
                 aria-invalid={phraseError ? true : undefined}
                 aria-describedby={phraseError ? "join-phrase-error" : "join-phrase-hint"}
+                className="ui-field"
               />
             </label>
             {checkingPhrase ? <p className="meta join-field-hint">秘密の言葉を確認しています…</p> : null}
@@ -398,7 +402,7 @@ export function JoinPageClient() {
             <div className="recovery-modal-actions">
               <button
                 type="submit"
-                className="recovery-modal-submit"
+                className="recovery-modal-submit ui-button ui-button--primary"
                 disabled={busy || Boolean(phraseError)}
               >
                 {submitting ? "登録中…" : "登録する"}

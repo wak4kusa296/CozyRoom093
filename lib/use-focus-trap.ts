@@ -1,6 +1,6 @@
 "use client";
 
-import { RefObject, useEffect, useRef } from "react";
+import { RefObject, useEffect, useLayoutEffect, useRef } from "react";
 
 const FOCUSABLE =
   'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -15,7 +15,8 @@ const FOCUSABLE =
 export function useFocusTrap(
   dialogRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
-  onClose: () => void
+  onClose: () => void,
+  restoreFocus: () => boolean = () => true
 ) {
   const triggerRef = useRef<Element | null>(null);
   /*
@@ -24,10 +25,14 @@ export function useFocusTrap(
    * 入力欄からフォーカスが外れる（モバイルではキーボードが閉じる）。
    */
   const onCloseRef = useRef(onClose);
+  const restoreFocusRef = useRef(restoreFocus);
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+  useLayoutEffect(() => {
+    restoreFocusRef.current = restoreFocus;
+  }, [restoreFocus]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -73,7 +78,7 @@ export function useFocusTrap(
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      if (triggerRef.current instanceof HTMLElement) {
+      if (restoreFocusRef.current() && triggerRef.current instanceof HTMLElement) {
         triggerRef.current.focus();
       }
     };

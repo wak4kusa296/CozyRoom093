@@ -1,9 +1,15 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const scriptSources = ["'self'", "'unsafe-inline'"];
+if (process.env.NODE_ENV === "development") {
+  // Next.js development tooling evaluates source maps in the browser.
+  scriptSources.push("'unsafe-eval'");
+}
+
 const securityHeaders = [
   {
-    key: "Content-Security-Policy-Report-Only",
+    key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       "base-uri 'self'",
@@ -11,7 +17,7 @@ const securityHeaders = [
       "frame-ancestors 'none'",
       "object-src 'none'",
       "worker-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      `script-src ${scriptSources.join(" ")}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",

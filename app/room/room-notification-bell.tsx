@@ -27,19 +27,9 @@ export function RoomNotificationBell() {
   const [pushPermitBusy, setPushPermitBusy] = useState(false);
   const [pushPermitMessage, setPushPermitMessage] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
   const nonSilentLoadCountRef = useRef(0);
   const loadEffectFirstRun = useRef(true);
-  const isOutsideTargetIgnored = useCallback(
-    (target: EventTarget | null) =>
-      target instanceof Node && Boolean(pushDialogRef.current?.contains(target)),
-    []
-  );
-  const { mounted, open, panelPos, setOpen } = useNotificationShell({
-    bellRef,
-    panelRef,
-    isOutsideTargetIgnored
-  });
-
   const [pushModal, setPushModal] = useState<{
     title: string;
     body: string;
@@ -51,6 +41,17 @@ export function RoomNotificationBell() {
     /** 未読一覧から開いたとき、モーダル表示と同タイミングで既読にする */
     pendingMarkReadId?: string;
   } | null>(null);
+  const isOutsideTargetIgnored = useCallback(
+    (target: EventTarget | null) =>
+      target instanceof Node && Boolean(pushDialogRef.current?.contains(target)),
+    []
+  );
+  const { mounted, open, panelPos, setOpen } = useNotificationShell({
+    bellRef,
+    panelRef,
+    isOutsideTargetIgnored,
+    focusTrapEnabled: !pushModal
+  });
 
   const refreshPushPermitVisibility = useCallback(async () => {
     setPushPermitVisible(await shouldShowPermitPushButton());
@@ -102,12 +103,17 @@ export function RoomNotificationBell() {
       setListLoading(true);
     }
     try {
+      setNotificationError(null);
       const res = await fetch(`/api/room/notifications?view=${viewMode}`, { cache: "no-store" });
       if (res.status === 401) {
         redirectHomeIfUnauthorized(401);
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        setNotificationError(data?.error?.message ?? "通知を読み込めませんでした。接続を確認して、もう一度お試しください。");
+        return;
+      }
       setSessionActive(true);
       const data = (await res.json()) as {
         items?: RoomNotificationItem[];
@@ -115,6 +121,8 @@ export function RoomNotificationBell() {
       };
       setItems(data.items ?? []);
       setUnreadCount(data.unreadCount ?? 0);
+    } catch {
+      setNotificationError("通知を読み込めませんでした。接続を確認して、もう一度お試しください。");
     } finally {
       if (!silent) {
         nonSilentLoadCountRef.current -= 1;
@@ -154,15 +162,20 @@ export function RoomNotificationBell() {
     setItems((prev) => prev.filter((x) => x.id !== id));
     setUnreadCount((c) => Math.max(0, c - 1));
     try {
+      setNotificationError(null);
       const res = await fetch("/api/room/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
       });
       redirectHomeIfUnauthorized(res.status);
-      if (!res.ok) void load({ silent: true });
-      else void load({ silent: true });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        setNotificationError(data?.error?.message ?? "通知を既読にできませんでした。もう一度お試しください。");
+      }
+      void load({ silent: true });
     } catch {
+      setNotificationError("通知を既読にできませんでした。もう一度お試しください。");
       void load({ silent: true });
     }
   }, [load]);
@@ -205,6 +218,7 @@ export function RoomNotificationBell() {
         ref={panelRef}
         className="admin-notification-panel admin-notification-panel--portal"
         role="dialog"
+        aria-modal="true"
         aria-labelledby="room-notification-title"
         style={{ top: panelPos.top, right: panelPos.right }}
       >
@@ -248,6 +262,11 @@ export function RoomNotificationBell() {
         {pushPermitMessage ? (
           <p className="admin-notification-panel-desc" role="status">
             {pushPermitMessage}
+          </p>
+        ) : null}
+        {notificationError ? (
+          <p className="letter-form-error" role="alert">
+            {notificationError}
           </p>
         ) : null}
       </header>

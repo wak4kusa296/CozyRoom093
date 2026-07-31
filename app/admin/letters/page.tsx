@@ -5,7 +5,14 @@ import { AdminLetterThreadModal } from "@/app/admin/letters/admin-letter-thread-
 import { listContents } from "@/lib/content";
 import { listLetterThreads, normalizeThreadKey } from "@/lib/letters";
 import { listGuestCredentialsWithStatus } from "@/lib/guest-credentials";
+import { formatSiteDateTime } from "@/lib/site-datetime";
 import Link from "next/link";
+
+function formatLatestPreview(body: string | null): string {
+  const normalized = body?.replace(/\s+/g, " ").trim() ?? "";
+  if (!normalized) return "（本文なし）";
+  return normalized.length > 80 ? `${normalized.slice(0, 80)}…` : normalized;
+}
 
 export default async function AdminLettersPage({
   searchParams
@@ -89,6 +96,12 @@ export default async function AdminLettersPage({
                         >
                           <span className="admin-letters-row-title">{contentTitle}</span>
                           <span className="admin-letters-row-user">{displayName}</span>
+                          <span className="admin-letters-row-preview">{formatLatestPreview(thread.latestBody)}</span>
+                          {thread.latestAt ? (
+                            <time className="admin-letters-row-when" dateTime={thread.latestAt}>
+                              {formatSiteDateTime(thread.latestAt)}
+                            </time>
+                          ) : null}
                           <span className={`admin-letters-row-status ${isConfirmed ? "is-confirmed" : "is-pending"}`}>
                             {isConfirmed ? "確認済み" : "未確認"}
                           </span>

@@ -1,4 +1,5 @@
 import { getDbPool } from "@/lib/db";
+import { getCredentialLookupHash } from "@/lib/credential-lookup";
 import { isValidHandwrittenPassword } from "@/lib/passphrase-rules";
 import { hashSecret, verifySecret } from "@/lib/secret-hash";
 
@@ -44,6 +45,7 @@ export async function findActiveRegistrationGateByPhrase(phraseInput: string): P
   if (!phrase) return null;
 
   const pool = getDbPool();
+  const lookupHash = getCredentialLookupHash(phrase, "registration_gate");
   const result = await pool.query<{
     gate_id: string;
     phrase_hash: string;
@@ -53,10 +55,29 @@ export async function findActiveRegistrationGateByPhrase(phraseInput: string): P
     `
     SELECT gate_id, phrase_hash, label, is_active
     FROM registration_gates
-    WHERE is_active = TRUE
-    `
+    WHERE is_active = TRUE AND phrase_lookup_hash = $1
+    `,
+    [lookupHash]
   );
   for (const row of result.rows) {
+    if (await verifySecret(phrase, row.phrase_hash)) {
+      return { gateId: row.gate_id, label: row.label, isActive: row.is_active };
+    }
+  }
+
+  // Hash-only rows predating migration 016 cannot be indexed without their
+  // original phrase. Retain this fallback until each gate is updated.
+  const legacyResult = await pool.query<{
+    gate_id: string;
+    phrase_hash: string;
+    label: string;
+    is_active: boolean;
+  }>(`
+    SELECT gate_id, phrase_hash, label, is_active
+    FROM registration_gates
+    WHERE is_active = TRUE AND phrase_lookup_hash IS NULL
+  `);
+  for (const row of legacyResult.rows) {
     if (await verifySecret(phrase, row.phrase_hash)) {
       return { gateId: row.gate_id, label: row.label, isActive: row.is_active };
     }
@@ -78,15 +99,16 @@ export async function upsertRegistrationGate(input: {
   const pool = getDbPool();
   await pool.query(
     `
-    INSERT INTO registration_gates (gate_id, phrase_hash, label, is_active)
-    VALUES ($1, $2, $3, TRUE)
+    INSERT INTO registration_gates (gate_id, phrase_hash, label, is_active, phrase_lookup_hash)
+    VALUES ($1, $2, $3, TRUE, $4)
     ON CONFLICT (gate_id)
     DO UPDATE SET
       phrase_hash = EXCLUDED.phrase_hash,
+      phrase_lookup_hash = EXCLUDED.phrase_lookup_hash,
       label = EXCLUDED.label,
       updated_at = NOW()
     `,
-    [gateId, await hashSecret(phrase), label]
+    [gateId, await hashSecret(phrase), label, getCredentialLookupHash(phrase, "registration_gate")]
   );
   return "ok";
 }
@@ -104,10 +126,10 @@ export async function updateRegistrationGatePhrase(
   await pool.query(
     `
     UPDATE registration_gates
-    SET phrase_hash = $2, updated_at = NOW()
+    SET phrase_hash = $2, phrase_lookup_hash = $3, updated_at = NOW()
     WHERE gate_id = $1
     `,
-    [gateId, await hashSecret(phrase)]
+    [gateId, await hashSecret(phrase), getCredentialLookupHash(phrase, "registration_gate")]
   );
   return "ok";
 }

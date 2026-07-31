@@ -150,7 +150,9 @@ export function HomePageClient() {
             <div className="recovery-modal-header">
               <h2 id="recovery-modal-title">秘密の言葉を問い合わせる</h2>
               <button type="button" className="recovery-modal-close-btn" onClick={closeRecoverModal} aria-label="閉じる">
-                <span aria-hidden="true">×</span>
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  close
+                </span>
               </button>
             </div>
             <p className="meta recovery-modal-lead">

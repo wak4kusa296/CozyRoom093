@@ -1,0 +1,109 @@
+﻿/*
+ * ── Design-system foundation (Phase 5) ─────────────────────────────────────
+ * Responsive convention for new work:
+ *   compact: max-width 640px; tablet: 641px–1023px; desktop: min-width 1024px.
+ * Existing component breakpoints remain untouched to avoid cascade regressions.
+ */
+
+/* Keyboard-only focus remains visible even when older component rules reset it. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: var(--focus-ring) !important;
+  outline-offset: var(--focus-offset);
+}
+
+/* Text links communicate that they are interactive without changing card/nav links. */
+:where(.text-link, .article-body a):is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+/* Shared primitives opt components into consistent controls incrementally. */
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ui-button:disabled,
+.ui-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ui-button--primary {
+  background: var(--color-fg);
+  border-color: var(--color-fg);
+  color: var(--color-white);
+}
+
+.ui-button--primary:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) {
+  background: #343434;
+  border-color: #343434;
+}
+
+.ui-button--secondary {
+  background: var(--color-white);
+  border-color: var(--color-border);
+  color: var(--color-fg);
+}
+
+.ui-button--secondary:is(:hover, :focus-visible):not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--color-fg) 4%, var(--color-white));
+  border-color: var(--color-fg-sub);
+}
+
+/* Use for letter flows when they are migrated; this preserves the warm accent. */
+.ui-button--letter {
+  background: var(--color-red);
+  border-color: var(--color-red);
+  color: var(--color-white);
+}
+
+.ui-field {
+  width: 100%;
+  min-height: 40px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  background: var(--color-white);
+  color: var(--color-fg);
+  font: inherit;
+  line-height: 1.5;
+}
+
+textarea.ui-field {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.ui-field:focus-visible {
+  border-color: var(--color-focus);
+}
+
+.ui-modal {
+  width: min(calc(100% - 2 * var(--s-4)), 640px);
+  max-height: min(80vh, 720px);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  background: var(--color-white);
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--color-fg) 18%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-button {
+    transition: none;
+  }
+}
