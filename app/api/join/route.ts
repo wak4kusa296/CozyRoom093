@@ -73,11 +73,11 @@ export async function POST(request: Request) {
   }
 
   let guestId = buildGuestIdFromNow();
-  let insertResult = await insertGuestCredential({ guestId, guestName, phrase });
+  let insertResult = await insertGuestCredential({ guestId, guestName, phrase, adminMemo: memo });
   if (insertResult === "id_taken") {
     await new Promise((r) => setTimeout(r, 1100));
     guestId = buildGuestIdFromNow();
-    insertResult = await insertGuestCredential({ guestId, guestName, phrase });
+    insertResult = await insertGuestCredential({ guestId, guestName, phrase, adminMemo: memo });
   }
 
   if (insertResult === "phrase_taken") {

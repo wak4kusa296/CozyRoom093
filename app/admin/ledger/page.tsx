@@ -8,12 +8,13 @@ import { GateActiveStatusSelect } from "@/app/admin/ledger/gate-active-status-se
 import { DeleteGateButton } from "@/app/admin/ledger/delete-gate-button";
 import {
   buildGuestIdFromNow,
+  insertGuestCredential,
   listGuestCredentialsWithStatus,
   setGuestActive,
   syncGuestCredentialsFromEnv,
+  updateGuestAdminMemo,
   updateGuestName,
-  updateGuestPhrase,
-  upsertGuestCredential
+  updateGuestPhrase
 } from "@/lib/guest-credentials";
 import {
   buildGateIdFromNow,
@@ -39,10 +40,11 @@ async function addGuestAction(formData: FormData) {
   try {
     const phrase = String(formData.get("phrase") ?? "");
     if (secretPhraseContainsWhitespace(phrase) || !isValidSecretPhrase(phrase)) return;
-    await upsertGuestCredential({
+    await insertGuestCredential({
       guestId: buildGuestIdFromNow(),
       guestName: String(formData.get("guestName") ?? ""),
-      phrase
+      phrase,
+      adminMemo: String(formData.get("adminMemo") ?? "")
     });
   } catch {
     // Keep screen usable even if constraints fail.
@@ -70,6 +72,18 @@ async function updateNameAction(formData: FormData) {
 
   try {
     await updateGuestName(String(formData.get("guestId") ?? ""), String(formData.get("guestName") ?? ""));
+  } catch {
+    // Keep screen usable even if constraints fail.
+  }
+  revalidatePath("/admin/ledger");
+}
+
+async function updateAdminMemoAction(formData: FormData) {
+  "use server";
+  await requireAdminSession();
+
+  try {
+    await updateGuestAdminMemo(String(formData.get("guestId") ?? ""), String(formData.get("adminMemo") ?? ""));
   } catch {
     // Keep screen usable even if constraints fail.
   }
@@ -195,11 +209,13 @@ export default async function AdminLedgerPage({
 
         <section className="stack admin-panel">
           <h2>手書きのパスワード</h2>
-          <p className="meta">
-            QR の行き先は <code>{joinUrl}</code> です。紙に書いた手書きのパスワードが有効なときだけ、そこから自己登録できます。無効にすると登録できなくなります。
-          </p>
-          <p className="meta">{HANDWRITTEN_PASSWORD_RULE_HINT}</p>
-          <p className="meta">{HANDWRITTEN_PASSWORD_PAPER_HINT}</p>
+          <ul className="meta admin-gate-hints">
+            <li>
+              QR の行き先は <code>{joinUrl}</code> です。紙に書いた手書きのパスワードが有効なときだけ、そこから自己登録できます。無効にすると登録できなくなります。
+            </li>
+            <li>{HANDWRITTEN_PASSWORD_RULE_HINT}</li>
+            <li>{HANDWRITTEN_PASSWORD_PAPER_HINT}</li>
+          </ul>
           <form action={addGateAction} className="admin-inline-form">
             <label>
               メモ（任意）
@@ -304,6 +320,10 @@ export default async function AdminLedgerPage({
               合言葉
               <input name="phrase" required />
             </label>
+            <label>
+              管理人メモ（任意・ゲストには見えません）
+              <textarea name="adminMemo" rows={2} lang="ja" className="admin-phrase-editor" />
+            </label>
             <button type="submit" className="admin-add-button">
               追加する
             </button>
@@ -323,6 +343,7 @@ export default async function AdminLedgerPage({
               <colgroup>
                 <col className="admin-ledger-col-id" />
                 <col className="admin-ledger-col-display" />
+                <col className="admin-ledger-col-memo" />
                 <col className="admin-ledger-col-phrase" />
                 <col className="admin-ledger-col-status" />
                 <col className="admin-ledger-col-actions" />
@@ -331,6 +352,7 @@ export default async function AdminLedgerPage({
                 <tr>
                   <th>ユーザーID</th>
                   <th>表示名</th>
+                  <th>管理人メモ</th>
                   <th>秘密の言葉</th>
                   <th>状態</th>
                   <th scope="col" className="admin-table-col-actions">
@@ -360,6 +382,31 @@ export default async function AdminLedgerPage({
                               autoComplete="name"
                               defaultValue={item.guestName}
                               required
+                            />
+                            <button type="submit" className="sr-only" tabIndex={-1}>
+                              保存
+                            </button>
+                          </AdminLedgerInlineEditForm>
+                        </details>
+                      </div>
+                    </td>
+                    <td data-label="管理人メモ">
+                      <div className="admin-phrase-line">
+                        <span className="admin-memo-text">{item.adminMemo || "—"}</span>
+                        <details className="admin-edit-disclosure">
+                          <summary className="admin-edit-summary" aria-label="管理人メモの編集を開く">
+                            <span className="material-symbols-outlined admin-nav-icon" aria-hidden="true">
+                              edit
+                            </span>
+                          </summary>
+                          <AdminLedgerInlineEditForm action={updateAdminMemoAction} className="admin-inline-form admin-inline-form-compact">
+                            <input type="hidden" name="guestId" value={item.guestId} />
+                            <textarea
+                              name="adminMemo"
+                              defaultValue={item.adminMemo}
+                              rows={2}
+                              className="admin-phrase-editor"
+                              lang="ja"
                             />
                             <button type="submit" className="sr-only" tabIndex={-1}>
                               保存

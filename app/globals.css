@@ -2373,7 +2373,20 @@ main.article-wrap {
   font-weight: 700;
 }
 
-.room-sidebar .sidebar-admin-link {
+.sidebar-logout-form {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+button.sidebar-logout-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.room-sidebar .sidebar-admin-link,
+.room-site-footer .sidebar-admin-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2390,12 +2403,14 @@ main.article-wrap {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.room-sidebar .sidebar-admin-link:hover {
+.room-sidebar .sidebar-admin-link:hover,
+.room-site-footer .sidebar-admin-link:hover {
   background: color-mix(in srgb, var(--color-white) 75%, transparent);
   border-color: var(--color-fg-mute);
 }
 
-.room-sidebar .sidebar-admin-link-icon {
+.room-sidebar .sidebar-admin-link-icon,
+.room-site-footer .sidebar-admin-link-icon {
   flex-shrink: 0;
   font-size: var(--size-title);
   line-height: 1;
@@ -3260,6 +3275,7 @@ img.article-magazine-banner-thumb-img {
   .room-push-notify-banner-secondary,
   .room-notification-permit-push-inline,
   .room-sidebar .sidebar-admin-link,
+  .room-site-footer .sidebar-admin-link,
   .article-body .article-tag,
   .article-body a.article-body-link-label-btn,
   .letter-open-button,
@@ -5453,6 +5469,23 @@ blockquote blockquote::before {
   font-size: var(--font-sm);
 }
 
+.admin-panel > .admin-gate-hints {
+  margin: 0;
+  padding-left: 1.25em;
+  font-size: var(--font-sm);
+  line-height: 1.35;
+  list-style: disc;
+}
+
+.admin-panel > .admin-gate-hints li {
+  margin: 0;
+  padding: 0;
+}
+
+.admin-panel > .admin-gate-hints li + li {
+  margin-top: 2px;
+}
+
 .admin-add-button {
   width: 100%;
   min-height: 44px;
@@ -5507,6 +5540,18 @@ blockquote blockquote::before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
+}
+
+.admin-memo-text {
+  display: inline-block;
+  max-width: 100%;
+  font-size: var(--font-sm);
+  color: var(--color-fg-sub);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   vertical-align: middle;
 }
 
@@ -5667,17 +5712,21 @@ blockquote blockquote::before {
     table-layout: fixed;
   }
 
-  /* 比 14 : 22 : 38（合計74）— 状態はトグル1個分で固定幅 */
+  /* 比 12 : 16 : 22 : 24（合計74）— 状態はトグル1個分で固定幅 */
   .admin-ledger-col-id {
-    width: calc((100% - 100px) * 14 / 74);
+    width: calc((100% - 100px) * 12 / 74);
   }
 
   .admin-ledger-col-display {
+    width: calc((100% - 100px) * 16 / 74);
+  }
+
+  .admin-ledger-col-memo {
     width: calc((100% - 100px) * 22 / 74);
   }
 
   .admin-ledger-col-phrase {
-    width: calc((100% - 100px) * 38 / 74);
+    width: calc((100% - 100px) * 24 / 74);
   }
 
   .admin-ledger-col-status {

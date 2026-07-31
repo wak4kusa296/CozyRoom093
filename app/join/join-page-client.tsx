@@ -219,7 +219,7 @@ export function JoinPageClient() {
         <h1 className="sr-only">新規登録</h1>
         <p className="lead">この部屋への新規登録</p>
         <p className="meta">
-          紙に書かれた手書きのパスワードと、あなたが決める秘密の言葉を入力してください。メールアドレスは控えの送付にだけ使い、すぐ破棄します。
+          紙に書かれた手書きのパスワードと、あなたが決める秘密の言葉を入力してください。呼び名と場面は管理人の確認用で、他のゲストには見えません。メールアドレスは控えの送付にだけ使い、すぐ破棄します。
         </p>
 
         <form onSubmit={onSubmit} className="stack recovery-modal-form">

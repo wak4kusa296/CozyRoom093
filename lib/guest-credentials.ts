@@ -6,6 +6,8 @@ export type GuestCredential = {
   guestName: string;
   phrase: string;
   isActive: boolean;
+  /** 管理人だけが見るメモ。ゲスト向け画面・APIには出さない */
+  adminMemo: string;
 };
 
 export function parseGuestCredentialsEnv() {
@@ -22,7 +24,8 @@ export function parseGuestCredentialsEnv() {
         guestId: guestName,
         guestName,
         phrase: guestPhrase,
-        isActive: true
+        isActive: true,
+        adminMemo: ""
       } satisfies GuestCredential;
     })
     .filter((item) => item.phrase.length > 0);
@@ -62,8 +65,9 @@ export async function listGuestCredentialsWithStatus() {
     guest_name: string;
     phrase: string;
     is_active: boolean;
+    admin_memo: string | null;
   }>(`
-    SELECT guest_id, guest_name, phrase, is_active
+    SELECT guest_id, guest_name, phrase, is_active, admin_memo
     FROM guest_credentials
     ORDER BY guest_id ASC
   `);
@@ -72,7 +76,8 @@ export async function listGuestCredentialsWithStatus() {
     guestId: row.guest_id,
     guestName: row.guest_name,
     phrase: row.phrase,
-    isActive: row.is_active
+    isActive: row.is_active,
+    adminMemo: row.admin_memo ?? ""
   }));
 }
 
@@ -209,20 +214,22 @@ export async function insertGuestCredential(input: {
   guestId: string;
   guestName: string;
   phrase: string;
+  adminMemo?: string;
 }): Promise<"ok" | "phrase_taken" | "id_taken"> {
   const guestId = input.guestId.trim();
   const guestName = input.guestName.trim();
   const phrase = input.phrase.trim();
+  const adminMemo = (input.adminMemo ?? "").trim();
   if (!guestId || !guestName || !phrase) return "phrase_taken";
 
   const pool = getDbPool();
   try {
     await pool.query(
       `
-      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
-      VALUES ($1, $2, $3, TRUE)
+      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active, admin_memo)
+      VALUES ($1, $2, $3, TRUE, $4)
       `,
-      [guestId, guestName, phrase]
+      [guestId, guestName, phrase, adminMemo]
     );
     return "ok";
   } catch (e: unknown) {
@@ -289,6 +296,21 @@ export async function updateGuestName(guestIdInput: string, guestNameInput: stri
     WHERE guest_id = $1
     `,
     [guestId, guestName]
+  );
+}
+
+export async function updateGuestAdminMemo(guestIdInput: string, adminMemoInput: string) {
+  const guestId = guestIdInput.trim();
+  if (!guestId) return;
+
+  const pool = getDbPool();
+  await pool.query(
+    `
+    UPDATE guest_credentials
+    SET admin_memo = $2, updated_at = NOW()
+    WHERE guest_id = $1
+    `,
+    [guestId, adminMemoInput.trim()]
   );
 }
 

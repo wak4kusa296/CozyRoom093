@@ -82,6 +82,14 @@ export function RoomSidebar({
           </Link>
         ) : null}
         <RoomPwaInstall />
+        <form action="/api/logout" method="post" className="sidebar-logout-form">
+          <button type="submit" className="sidebar-admin-link sidebar-logout-button">
+            <span className="material-symbols-outlined sidebar-admin-link-icon" aria-hidden="true">
+              logout
+            </span>
+            <span>部屋を出る</span>
+          </button>
+        </form>
         <p className="sidebar-foot">© 2026 GotoTatsuya</p>
       </div>
     </aside>
