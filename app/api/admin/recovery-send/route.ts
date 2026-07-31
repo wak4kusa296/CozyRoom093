@@ -30,7 +30,8 @@ export async function POST(request: Request) {
   }
 
   const row = await getRecoveryRequestById(id);
-  if (!row || row.readAt) {
+  /** 無視済み（read_at あり）でも履歴から再発行できるようにする */
+  if (!row) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 

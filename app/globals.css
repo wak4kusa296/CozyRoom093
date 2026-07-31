@@ -1851,6 +1851,11 @@ main {
   background: unset;
 }
 
+.admin-notification-handled-at {
+  color: var(--color-fg-mute);
+  font-size: var(--font-sm);
+}
+
 .admin-notification-smtp-hint {
   display: flex;
   align-items: flex-start;

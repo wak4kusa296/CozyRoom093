@@ -16,11 +16,14 @@ import {
 } from "@/lib/signup-notifications";
 import { pingAdminNotificationSubscribers } from "@/lib/notification-push";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "admin") {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
+
+  const viewParam = new URL(request.url).searchParams.get("view");
+  const view = viewParam === "history" ? "history" : "unread";
 
   const [recoveryRows, signupRows, letterEvents, letterReads, guests] = await Promise.all([
     listRecoveryRequests(),
@@ -36,7 +39,7 @@ export async function GET() {
   }));
 
   const recoveryItems = recoveryRows
-    .filter((row) => !row.readAt)
+    .filter((row) => (view === "history" ? Boolean(row.readAt) : !row.readAt))
     .map((row) => ({
       kind: "recovery" as const,
       id: row.id,
@@ -48,7 +51,7 @@ export async function GET() {
     }));
 
   const signupItems = signupRows
-    .filter((row) => !row.readAt)
+    .filter((row) => (view === "history" ? Boolean(row.readAt) : !row.readAt))
     .map((row) => ({
       kind: "signup" as const,
       id: row.id,
@@ -61,7 +64,7 @@ export async function GET() {
     }));
 
   const letterItems = letterEvents
-    .filter((e) => !letterReads[e.id])
+    .filter((e) => (view === "history" ? Boolean(letterReads[e.id]) : !letterReads[e.id]))
     .map((e) => ({
       kind: "letter" as const,
       id: e.id,
@@ -86,6 +89,7 @@ export async function GET() {
     ok: true,
     items,
     unreadCount,
+    view,
     smtpConfigured: isSmtpConfigured(),
     recoveryGuestOptions
   });

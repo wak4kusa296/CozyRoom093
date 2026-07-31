@@ -49,6 +49,7 @@ function truncateBody(text: string, max = 120) {
 
 export function AdminNotificationBell() {
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"unread" | "history">("unread");
   const [items, setItems] = useState<FeedItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [gate, setGate] = useState<"loading" | "guest" | "admin">("loading");
@@ -115,7 +116,7 @@ export function AdminNotificationBell() {
   }, []);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/notifications", { cache: "no-store" });
+    const res = await fetch(`/api/admin/notifications?view=${viewMode}`, { cache: "no-store" });
     if (res.status === 403) {
       setGate("guest");
       return;
@@ -132,7 +133,7 @@ export function AdminNotificationBell() {
     setUnreadCount(data.unreadCount ?? 0);
     setSmtpConfigured(Boolean(data.smtpConfigured));
     setRecoveryGuestOptions(Array.isArray(data.recoveryGuestOptions) ? data.recoveryGuestOptions : []);
-  }, []);
+  }, [viewMode]);
 
   useEffect(() => {
     void load();
@@ -176,8 +177,10 @@ export function AdminNotificationBell() {
   }, [open]);
 
   async function markRead(id: string) {
-    setItems((prev) => prev.filter((x) => x.id !== id));
-    setUnreadCount((c) => Math.max(0, c - 1));
+    if (viewMode === "unread") {
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      setUnreadCount((c) => Math.max(0, c - 1));
+    }
     try {
       const res = await fetch("/api/admin/notifications", {
         method: "PATCH",
@@ -218,8 +221,10 @@ export function AdminNotificationBell() {
         body: JSON.stringify({ id: row.id, guestId })
       });
       if (res.ok) {
-        setItems((prev) => prev.filter((x) => x.id !== row.id));
-        setUnreadCount((c) => Math.max(0, c - 1));
+        if (viewMode === "unread") {
+          setItems((prev) => prev.filter((x) => x.id !== row.id));
+          setUnreadCount((c) => Math.max(0, c - 1));
+        }
         void load();
         return;
       }
@@ -276,10 +281,26 @@ export function AdminNotificationBell() {
                   通知を許可
                 </button>
               ) : null}
+              <button
+                type="button"
+                className={`room-notification-filter-toggle${viewMode === "history" ? " is-active" : ""}`}
+                aria-label={viewMode === "unread" ? "過去の対応済みを表示" : "未読の通知に戻る"}
+                aria-pressed={viewMode === "history"}
+                title={viewMode === "unread" ? "過去の対応済み" : "未読に戻る"}
+                onClick={() => {
+                  setViewMode((v) => (v === "unread" ? "history" : "unread"));
+                }}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  filter_list
+                </span>
+              </button>
             </div>
           </div>
           <p className="admin-notification-panel-desc">
-            新規登録・再発行の問い合わせ・ゲストからの文通です。新規登録は「確認した」で消えます。再発行はメール送信または「無視」、文通はスレッドを開くか「対応済み」で消えます。
+            {viewMode === "unread"
+              ? "新規登録・再発行の問い合わせ・ゲストからの文通です。新規登録は「確認した」で消えます。再発行はメール送信または「無視」、文通はスレッドを開くか「対応済み」で消えます。"
+              : "無視・確認済み・対応済みにした通知の履歴です。誤って無視した問い合わせもここから内容を確認し、再発行メールを送れます。フィルターをもう一度押すと未読一覧に戻ります。"}
           </p>
           {!smtpConfigured ? (
             <p className="admin-notification-smtp-hint" role="status">
@@ -293,14 +314,26 @@ export function AdminNotificationBell() {
           ) : null}
         </header>
         {items.length === 0 ? (
-          <p className="meta admin-notification-empty">通知はありません。</p>
+          <p className="meta admin-notification-empty">
+            {viewMode === "history" ? "過去の通知はありません。" : "通知はありません。"}
+          </p>
         ) : (
           <ul className="admin-notification-list">
             {items.map((row) =>
               row.kind === "recovery" ? (
-                <li key={row.id} className="room-notification-reply-card room-notification-admin-recovery is-unread">
+                <li
+                  key={row.id}
+                  className={`room-notification-reply-card room-notification-admin-recovery${
+                    viewMode === "history" ? " is-history" : " is-unread"
+                  }`}
+                >
                   <span className="room-notification-push-kind">秘密の言葉の問い合わせ</span>
                   <p className="admin-notification-when">{formatSiteDateTimeWithSeconds(row.createdAt)}</p>
+                  {viewMode === "history" && row.readAt ? (
+                    <p className="admin-notification-when admin-notification-handled-at">
+                      対応済み {formatSiteDateTimeWithSeconds(row.readAt)}
+                    </p>
+                  ) : null}
                   <p className="room-notification-reply-lead">
                     <span className="admin-notification-label">呼び名</span> {row.hintName}
                   </p>
@@ -342,20 +375,32 @@ export function AdminNotificationBell() {
                         {sendingRecoveryId === row.id ? "送信中…" : "再発行メールを送る"}
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      className="admin-small-button"
-                      disabled={sendingRecoveryId === row.id}
-                      onClick={() => void markRead(row.id)}
-                    >
-                      無視
-                    </button>
+                    {viewMode === "unread" ? (
+                      <button
+                        type="button"
+                        className="admin-small-button"
+                        disabled={sendingRecoveryId === row.id}
+                        onClick={() => void markRead(row.id)}
+                      >
+                        無視
+                      </button>
+                    ) : null}
                   </div>
                 </li>
               ) : row.kind === "signup" ? (
-                <li key={row.id} className="room-notification-reply-card room-notification-admin-recovery is-unread">
+                <li
+                  key={row.id}
+                  className={`room-notification-reply-card room-notification-admin-recovery${
+                    viewMode === "history" ? " is-history" : " is-unread"
+                  }`}
+                >
                   <span className="room-notification-push-kind">新規登録</span>
                   <p className="admin-notification-when">{formatSiteDateTimeWithSeconds(row.createdAt)}</p>
+                  {viewMode === "history" && row.readAt ? (
+                    <p className="admin-notification-when admin-notification-handled-at">
+                      確認済み {formatSiteDateTimeWithSeconds(row.readAt)}
+                    </p>
+                  ) : null}
                   <p className="room-notification-reply-lead">
                     <span className="admin-notification-label">呼び名</span> {row.guestName}
                   </p>
@@ -377,15 +422,25 @@ export function AdminNotificationBell() {
                     >
                       ユーザー管理を開く
                     </a>
-                    <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
-                      確認した
-                    </button>
+                    {viewMode === "unread" ? (
+                      <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
+                        確認した
+                      </button>
+                    ) : null}
                   </div>
                 </li>
               ) : (
-                <li key={row.id} className="room-notification-reply-card is-unread">
+                <li
+                  key={row.id}
+                  className={`room-notification-reply-card${viewMode === "history" ? " is-history" : " is-unread"}`}
+                >
                   <span className="room-notification-push-kind">文通</span>
                   <p className="admin-notification-when">{formatSiteDateTimeWithSeconds(row.createdAt)}</p>
+                  {viewMode === "history" && row.readAt ? (
+                    <p className="admin-notification-when admin-notification-handled-at">
+                      対応済み {formatSiteDateTimeWithSeconds(row.readAt)}
+                    </p>
+                  ) : null}
                   <p className="room-notification-reply-lead">{row.sender}さんからの便り</p>
                   <p className="admin-notification-letter-preview">{truncateBody(row.body)}</p>
                   <p>
@@ -397,11 +452,13 @@ export function AdminNotificationBell() {
                       スレッドを開く
                     </a>
                   </p>
-                  <div className="admin-notification-item-actions">
-                    <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
-                      対応済み
-                    </button>
-                  </div>
+                  {viewMode === "unread" ? (
+                    <div className="admin-notification-item-actions">
+                      <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
+                        対応済み
+                      </button>
+                    </div>
+                  ) : null}
                 </li>
               )
             )}
