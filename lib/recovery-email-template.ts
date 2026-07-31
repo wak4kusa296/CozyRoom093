@@ -2,6 +2,8 @@
  * 秘密の言葉の再発行メール（件名・本文）
  * secretPhrase は台帳で選んだ guest の phrase（呼び名ヒントとは無関係）。
  */
+import { PHRASE_ENTER_AS_SHOWN_HINT } from "@/lib/passphrase-rules";
+
 export type RecoveryEmailDraftParams = {
   contactEmail: string;
   secretPhrase: string;
@@ -38,6 +40,8 @@ export function buildRecoveryReissueEmailDraft(
     "━━━━━━━━",
     phrase,
     "━━━━━━━━",
+    "",
+    PHRASE_ENTER_AS_SHOWN_HINT,
     "",
     "またのお越しをお待ちしております。",
     "",

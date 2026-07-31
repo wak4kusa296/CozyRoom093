@@ -1,9 +1,10 @@
 "use client";
 
+import { AdminDeleteConfirmForm, useAdminDeleteConfirm } from "@/app/admin/admin-delete-confirm";
+import { MagazineMultiToggle } from "@/app/admin/content/magazine-multi-toggle";
 import { readAdminJson } from "@/lib/admin-read-json";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useEffect, useId, useRef, useState } from "react";
-import { MagazineMultiToggle } from "@/app/admin/content/magazine-multi-toggle";
 
 type ContentItem = {
   slug: string;
@@ -52,9 +53,8 @@ export function ContentDetailModal({
 }: DetailModalProps) {
   const [open, setOpen] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const [formConfirmOpen, setFormConfirmOpen] = useState(false);
   const dialogRef = useRef<HTMLElement>(null);
-
-  useFocusTrap(dialogRef, open, closeModal);
   const [replaceFileName, setReplaceFileName] = useState("");
   const [thumbUploading, setThumbUploading] = useState(false);
   const [thumbError, setThumbError] = useState<string | null>(null);
@@ -62,13 +62,17 @@ export function ContentDetailModal({
   const titleInputId = useId();
   const thumbFileInputId = useId();
   const titleFormRef = useRef<HTMLFormElement>(null);
+  const { confirmDelete, deleteConfirmDialog, isConfirmOpen } = useAdminDeleteConfirm();
 
   function closeModal() {
     setOpen(false);
     setReplaceOpen(false);
     setReplaceFileName("");
     setThumbError(null);
+    setFormConfirmOpen(false);
   }
+
+  useFocusTrap(dialogRef, open && !isConfirmOpen && !formConfirmOpen, closeModal);
 
   useEffect(() => {
     if (!open) return;
@@ -194,6 +198,8 @@ export function ContentDetailModal({
                       disabled={thumbUploading}
                       onClick={async () => {
                         if (!item.thumbnail) return;
+                        const ok = await confirmDelete("このサムネイルを削除しますか？");
+                        if (!ok) return;
                         setThumbError(null);
                         setThumbUploading(true);
                         try {
@@ -406,18 +412,24 @@ export function ContentDetailModal({
             </section>
 
             <section className="admin-content-detail-section">
-              <form action={deleteContentAction} className="admin-content-delete-form">
+              <AdminDeleteConfirmForm
+                action={deleteContentAction}
+                className="admin-content-delete-form"
+                message={`「${item.title}」を削除しますか？\nこの操作は元に戻せません。`}
+                onOpenChange={setFormConfirmOpen}
+              >
                 <input type="hidden" name="slug" value={item.slug} />
                 <button type="submit" className="admin-icon-ghost" aria-label={`${item.title}を削除`}>
                   <span className="material-symbols-outlined admin-delete-icon" aria-hidden="true">
                     delete
                   </span>
                 </button>
-              </form>
+              </AdminDeleteConfirmForm>
             </section>
           </section>
         </div>
       ) : null}
+      {deleteConfirmDialog}
     </>
   );
 }

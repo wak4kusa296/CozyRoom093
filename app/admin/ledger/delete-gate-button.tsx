@@ -2,7 +2,6 @@
 
 import { useFormStatus } from "react-dom";
 import { AdminDeleteConfirmForm } from "@/app/admin/admin-delete-confirm";
-import { deleteGuestAction } from "./actions";
 
 function SubmitIcon() {
   const { pending } = useFormStatus();
@@ -16,17 +15,20 @@ function SubmitIcon() {
   );
 }
 
-export function DeleteGuestButton({ guestId }: { guestId: string }) {
+type DeleteGateButtonProps = {
+  gateId: string;
+  action: (formData: FormData) => Promise<void>;
+};
+
+export function DeleteGateButton({ gateId, action }: DeleteGateButtonProps) {
   return (
     <AdminDeleteConfirmForm
-      action={deleteGuestAction}
+      action={action}
       className="admin-delete-guest-form"
-      message={
-        "このユーザーを削除しますか？\n手紙・プッシュ購読・ハートの記録など、関連データもまとめて消えます。"
-      }
-    >
-      <input type="hidden" name="guestId" value={guestId} />
-      <button type="submit" className="admin-delete-guest-button" aria-label={`${guestId} を削除`} title="ユーザーを削除">
+      message={"この手書きのパスワードを削除しますか？\n無効化ではなく削除します。"}
+      >
+      <input type="hidden" name="gateId" value={gateId} />
+      <button type="submit" className="admin-delete-guest-button" aria-label={`${gateId} を削除`} title="手書きのパスワードを削除">
         <SubmitIcon />
       </button>
     </AdminDeleteConfirmForm>

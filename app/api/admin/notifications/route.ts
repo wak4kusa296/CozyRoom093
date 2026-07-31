@@ -9,6 +9,11 @@ import {
   listRecoveryRequests,
   markRecoveryRequestRead
 } from "@/lib/recovery-requests";
+import {
+  countUnreadSignupNotifications,
+  listSignupNotifications,
+  markSignupNotificationRead
+} from "@/lib/signup-notifications";
 import { pingAdminNotificationSubscribers } from "@/lib/notification-push";
 
 export async function GET() {
@@ -17,8 +22,9 @@ export async function GET() {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const [recoveryRows, letterEvents, letterReads, guests] = await Promise.all([
+  const [recoveryRows, signupRows, letterEvents, letterReads, guests] = await Promise.all([
     listRecoveryRequests(),
+    listSignupNotifications(),
     listGuestLetterEvents(),
     getLetterNotificationReads(),
     listGuestCredentials()
@@ -41,6 +47,19 @@ export async function GET() {
       contactEmail: row.contactEmail ?? ""
     }));
 
+  const signupItems = signupRows
+    .filter((row) => !row.readAt)
+    .map((row) => ({
+      kind: "signup" as const,
+      id: row.id,
+      createdAt: row.createdAt,
+      readAt: row.readAt ?? null,
+      guestId: row.guestId,
+      guestName: row.guestName,
+      memo: row.memo,
+      emailSent: row.emailSent
+    }));
+
   const letterItems = letterEvents
     .filter((e) => !letterReads[e.id])
     .map((e) => ({
@@ -54,13 +73,14 @@ export async function GET() {
       body: e.body
     }));
 
-  const items = [...recoveryItems, ...letterItems].sort((a, b) =>
+  const items = [...recoveryItems, ...signupItems, ...letterItems].sort((a, b) =>
     a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
   );
 
   const recoveryUnread = countUnreadRecoveryRequests(recoveryRows);
+  const signupUnread = countUnreadSignupNotifications(signupRows);
   const letterUnread = letterEvents.filter((e) => !letterReads[e.id]).length;
-  const unreadCount = recoveryUnread + letterUnread;
+  const unreadCount = recoveryUnread + signupUnread + letterUnread;
 
   return NextResponse.json({
     ok: true,
@@ -85,6 +105,12 @@ export async function PATCH(request: Request) {
 
   const recoveryOk = await markRecoveryRequestRead(id);
   if (recoveryOk) {
+    pingAdminNotificationSubscribers();
+    return NextResponse.json({ ok: true });
+  }
+
+  const signupOk = await markSignupNotificationRead(id);
+  if (signupOk) {
     pingAdminNotificationSubscribers();
     return NextResponse.json({ ok: true });
   }

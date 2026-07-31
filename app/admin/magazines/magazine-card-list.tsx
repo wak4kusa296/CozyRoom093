@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminDeleteConfirmForm, useAdminDeleteConfirm } from "@/app/admin/admin-delete-confirm";
 import { readAdminJson } from "@/lib/admin-read-json";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -56,14 +57,16 @@ export function MagazineCardList({
   );
 
   const magazineThumbFileInputId = useId();
+  const { confirmDelete, deleteConfirmDialog, isConfirmOpen } = useAdminDeleteConfirm();
+  const [formConfirmOpen, setFormConfirmOpen] = useState(false);
 
   const activeMagazine = useMemo(
     () => magazines.find((magazine) => magazine.id === activeId) ?? null,
     [magazines, activeId]
   );
 
-  useFocusTrap(settingsDialogRef, !!activeMagazine, closeMagazineModal);
-  useFocusTrap(managerDialogRef, !!(activeMagazine && managerOpen), closeManagerModal);
+  useFocusTrap(settingsDialogRef, !!activeMagazine && !managerOpen && !isConfirmOpen && !formConfirmOpen, closeMagazineModal);
+  useFocusTrap(managerDialogRef, !!(activeMagazine && managerOpen) && !isConfirmOpen && !formConfirmOpen, closeManagerModal);
 
   useEffect(() => {
     if (!activeId) return;
@@ -79,6 +82,7 @@ export function MagazineCardList({
     setActiveId(null);
     setUsageDeltaMap(new Map());
     setThumbError(null);
+    setFormConfirmOpen(false);
   }
 
   function toOrderKey(items: Array<{ slug: string; title: string }>) {
@@ -310,6 +314,8 @@ export function MagazineCardList({
                       disabled={thumbUploading}
                       onClick={async () => {
                         if (!activeMagazine.thumbnail) return;
+                        const ok = await confirmDelete("このサムネイルを削除しますか？");
+                        if (!ok) return;
                         setThumbError(null);
                         setThumbUploading(true);
                         try {
@@ -433,7 +439,12 @@ export function MagazineCardList({
             </section>
 
             <section className="admin-content-detail-section">
-              <form action={deleteMagazineAction} className="admin-inline-form">
+              <AdminDeleteConfirmForm
+                action={deleteMagazineAction}
+                className="admin-inline-form"
+                message={`マガジン「${activeMagazine.name}」を削除しますか？\n登録記事との紐づけも解除されます。`}
+                onOpenChange={setFormConfirmOpen}
+              >
                 <input type="hidden" name="id" value={activeMagazine.id} />
                 <input type="hidden" name="name" value={activeMagazine.name} />
                 <button type="submit" className="admin-small-button" aria-label="マガジンを削除">
@@ -441,7 +452,7 @@ export function MagazineCardList({
                     delete
                   </span>
                 </button>
-              </form>
+              </AdminDeleteConfirmForm>
             </section>
           </section>
         </div>
@@ -507,26 +518,33 @@ export function MagazineCardList({
                             drag_indicator
                           </span>
                         </button>
-                        <form action={removeContentFromMagazineAction} className="admin-inline-form">
+                        <AdminDeleteConfirmForm
+                          action={removeContentFromMagazineAction}
+                          className="admin-inline-form"
+                          confirmLabel="削除する"
+                          message={`「${item.title}」をこのマガジンから解除しますか？`}
+                          title="解除の確認"
+                          onOpenChange={setFormConfirmOpen}
+                          onConfirmed={() => {
+                            setManagedItems((prev) => prev.filter((row) => row.slug !== item.slug));
+                            setUsageDeltaMap((prev) => {
+                              const next = new Map(prev);
+                              const currentDelta = next.get(activeMagazine.name) ?? 0;
+                              next.set(activeMagazine.name, currentDelta - 1);
+                              return next;
+                            });
+                          }}
+                        >
                           <input type="hidden" name="magazineName" value={activeMagazine.name} />
                           <input type="hidden" name="slug" value={item.slug} />
                           <button
                             type="submit"
                             className="admin-small-button"
                             aria-label={`${item.title}を登録解除`}
-                            onClick={() => {
-                              setManagedItems((prev) => prev.filter((row) => row.slug !== item.slug));
-                              setUsageDeltaMap((prev) => {
-                                const next = new Map(prev);
-                                const currentDelta = next.get(activeMagazine.name) ?? 0;
-                                next.set(activeMagazine.name, currentDelta - 1);
-                                return next;
-                              });
-                            }}
                           >
                             解除
                           </button>
-                        </form>
+                        </AdminDeleteConfirmForm>
                       </div>
                     </li>
                   ))}
@@ -543,6 +561,7 @@ export function MagazineCardList({
           </section>
         </div>
       ) : null}
+      {deleteConfirmDialog}
     </>
   );
 }

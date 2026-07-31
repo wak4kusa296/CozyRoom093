@@ -17,6 +17,17 @@ type RecoveryFeedItem = {
   readAt: string | null;
 };
 
+type SignupFeedItem = {
+  kind: "signup";
+  id: string;
+  guestId: string;
+  guestName: string;
+  memo: string;
+  emailSent: boolean;
+  createdAt: string;
+  readAt: string | null;
+};
+
 type LetterFeedItem = {
   kind: "letter";
   id: string;
@@ -28,7 +39,7 @@ type LetterFeedItem = {
   readAt: string | null;
 };
 
-type FeedItem = RecoveryFeedItem | LetterFeedItem;
+type FeedItem = RecoveryFeedItem | SignupFeedItem | LetterFeedItem;
 
 function truncateBody(text: string, max = 120) {
   const t = text.trim();
@@ -257,7 +268,7 @@ export function AdminNotificationBell() {
             </div>
           </div>
           <p className="admin-notification-panel-desc">
-            再発行の問い合わせと、ゲストからの文通です。再発行はメール送信または「無視」で一覧から消えます。文通はスレッドを開くか「対応済み」で消えます。
+            新規登録・再発行の問い合わせ・ゲストからの文通です。新規登録は「確認した」で消えます。再発行はメール送信または「無視」、文通はスレッドを開くか「対応済み」で消えます。
           </p>
           {!smtpConfigured ? (
             <p className="admin-notification-smtp-hint" role="status">
@@ -327,6 +338,36 @@ export function AdminNotificationBell() {
                       onClick={() => void markRead(row.id)}
                     >
                       無視
+                    </button>
+                  </div>
+                </li>
+              ) : row.kind === "signup" ? (
+                <li key={row.id} className="room-notification-reply-card room-notification-admin-recovery is-unread">
+                  <span className="room-notification-push-kind">新規登録</span>
+                  <p className="admin-notification-when">{formatSiteDateTimeWithSeconds(row.createdAt)}</p>
+                  <p className="room-notification-reply-lead">
+                    <span className="admin-notification-label">呼び名</span> {row.guestName}
+                  </p>
+                  <p className="admin-notification-letter-preview">
+                    <span className="admin-notification-label">場面</span> {row.memo}
+                  </p>
+                  <p className="admin-notification-letter-preview">
+                    <span className="admin-notification-label">ユーザーID</span> {row.guestId}
+                  </p>
+                  <p className="admin-notification-letter-preview">
+                    <span className="admin-notification-label">控えメール</span>{" "}
+                    {row.emailSent ? "送付済み（宛先は保存していません）" : "未送付（宛先は保存していません）"}
+                  </p>
+                  <div className="admin-notification-item-actions">
+                    <a
+                      href="/admin/ledger"
+                      className="room-notification-seal-button"
+                      onClick={() => setOpen(false)}
+                    >
+                      ユーザー管理を開く
+                    </a>
+                    <button type="button" className="admin-small-button" onClick={() => void markRead(row.id)}>
+                      確認した
                     </button>
                   </div>
                 </li>

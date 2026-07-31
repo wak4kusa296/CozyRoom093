@@ -153,6 +153,25 @@ export async function isGuestCredentialActive(guestIdInput: string): Promise<boo
   }
 }
 
+export function buildGuestIdFromNow(): string {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mi = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  return `${yyyy}${mm}${dd}${hh}${mi}${ss}`;
+}
+
+/** 有効アカウントが同じ秘密の言葉を使っているか */
+export async function isActivePhraseTaken(phraseInput: string): Promise<boolean> {
+  const phrase = phraseInput.trim();
+  if (!phrase) return false;
+  const guest = await findGuestByPhrase(phrase);
+  return guest !== null;
+}
+
 export async function findGuestByPhrase(phraseInput: string): Promise<Guest | null> {
   const phrase = phraseInput.trim();
   if (!phrase) return null;
@@ -180,6 +199,40 @@ export async function findGuestByPhrase(phraseInput: string): Promise<Guest | nu
     name: row.guest_name,
     phrase: row.phrase
   };
+}
+
+/**
+ * 新規ゲストを挿入する。有効 phrase の重複時は phrase_taken。
+ * guest_id 衝突時は短いリトライを呼ぶ側で行う想定。
+ */
+export async function insertGuestCredential(input: {
+  guestId: string;
+  guestName: string;
+  phrase: string;
+}): Promise<"ok" | "phrase_taken" | "id_taken"> {
+  const guestId = input.guestId.trim();
+  const guestName = input.guestName.trim();
+  const phrase = input.phrase.trim();
+  if (!guestId || !guestName || !phrase) return "phrase_taken";
+
+  const pool = getDbPool();
+  try {
+    await pool.query(
+      `
+      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
+      VALUES ($1, $2, $3, TRUE)
+      `,
+      [guestId, guestName, phrase]
+    );
+    return "ok";
+  } catch (e: unknown) {
+    const code = typeof e === "object" && e && "code" in e ? String((e as { code?: string }).code) : "";
+    if (code === "23505") {
+      const taken = await isActivePhraseTaken(phrase);
+      return taken ? "phrase_taken" : "id_taken";
+    }
+    throw e;
+  }
 }
 
 export async function upsertGuestCredential(input: {

@@ -93,7 +93,7 @@ export default function AdminPage() {
                   group
                 </span>
                 <h3>ユーザー管理</h3>
-                <p className="meta">ユーザーと秘密の言葉の対応表を編集します。</p>
+                <p className="meta">ユーザーと秘密の言葉の対応表、手書きのパスワードを編集します。</p>
               </Link>
               <Link href="/admin/content" className="admin-nav-card">
                 <span className="material-symbols-outlined admin-nav-card-icon" aria-hidden="true">

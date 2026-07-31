@@ -13,5 +13,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/room/:path*"]
+  matcher: ["/", "/join", "/room/:path*"]
 };

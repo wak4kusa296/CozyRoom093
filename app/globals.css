@@ -1,5 +1,22 @@
-@import url("https://fonts.googleapis.com/css2?family=LINE+Seed+JP:wght@400;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200..700,0..1,0");
+/* フォントは app/layout.tsx の <link> で読み込む（Turbopack が CSS @import を落とすことがある） */
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined", sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
 
 :root {
   color-scheme: light;
@@ -221,6 +238,38 @@ main {
 
 .landing .card .message {
   padding: 0 var(--s-4) var(--s-6);
+}
+
+.join-success-memo {
+  margin: var(--s-4) 0;
+  padding: var(--s-4);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+}
+
+.join-success-phrase {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.125rem;
+  letter-spacing: 0.02em;
+  word-break: break-word;
+  margin: 0;
+}
+
+.join-field-hint {
+  display: block;
+  margin: 0;
+  font-size: var(--font-sm);
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--color-fg-sub);
+}
+
+.join-field-error {
+  display: block;
+  margin: 0;
+  font-size: var(--font-sm);
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--color-red);
 }
 
 .recovery-modal-backdrop {
@@ -5470,6 +5519,70 @@ blockquote blockquote::before {
   border-radius: var(--r-sm);
   background: var(--color-white);
   line-height: 1.5;
+}
+
+.admin-delete-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+  background: color-mix(in srgb, var(--color-fg) 45%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.admin-delete-confirm-dialog {
+  width: min(420px, calc(100vw - 32px));
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border-radius: var(--r-lg);
+  background: var(--color-white);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--color-fg) 18%, transparent);
+}
+
+.admin-delete-confirm-dialog h2 {
+  margin: 0;
+  font-size: var(--size-title);
+  line-height: 1.4;
+}
+
+.admin-delete-confirm-message {
+  margin: 0;
+  white-space: pre-line;
+  color: var(--color-fg-sub);
+  line-height: 1.6;
+}
+
+.admin-delete-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-3);
+}
+
+.admin-delete-confirm-actions .ghost {
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--color-fg-sub);
+  cursor: pointer;
+}
+
+.admin-delete-confirm-submit {
+  padding: var(--s-2) var(--s-4);
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--color-red);
+  color: var(--color-white);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-delete-confirm-submit:hover,
+.admin-delete-confirm-submit:focus-visible {
+  filter: brightness(0.95);
+  outline: none;
 }
 
 .admin-delete-guest-form {

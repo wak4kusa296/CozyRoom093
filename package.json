@@ -12,6 +12,7 @@
     "db:down": "docker compose -p nobody_room -f docker-compose.yml down",
     "db:logs": "docker compose -p nobody_room -f docker-compose.yml logs -f db",
     "db:migrate": "node scripts/db-migrate.mjs",
+    "db:check": "node scripts/db-check.mjs",
     "db:sync-guests": "node scripts/sync-guests-from-env.mjs",
     "test:db": "npm run db:migrate && node --test tests/db.integration.test.mjs"
   },
