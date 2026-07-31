@@ -13,6 +13,8 @@ import { findActiveRegistrationGateByPhrase } from "@/lib/registration-gates";
 import { buildSignupMemoEmailDraft, PHRASE_TAKEN_MESSAGE } from "@/lib/signup-email-template";
 import { appendSignupNotification } from "@/lib/signup-notifications";
 import { sendWebPushToAdminSubscribers } from "@/lib/web-push-deliver";
+import { getRequestClientIp, rateLimitHeaders, takeRateLimit } from "@/lib/rate-limit";
+import { toPublicAbsoluteHref } from "@/lib/public-url";
 
 function isValidEmail(value: string) {
   const v = value.trim();
@@ -21,8 +23,8 @@ function isValidEmail(value: string) {
 }
 
 function loginUrlFromRequest(request: Request) {
-  const env = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
-  if (env) return `${env}/`;
+  const configured = toPublicAbsoluteHref("/");
+  if (configured.startsWith("http://") || configured.startsWith("https://")) return configured;
   try {
     return new URL("/", request.url).href;
   } catch {
@@ -31,6 +33,11 @@ function loginUrlFromRequest(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limit = takeRateLimit(`join:${getRequestClientIp(request)}`, 8, 60 * 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: rateLimitHeaders(limit.retryAfterSeconds) });
+  }
+
   const body = (await request.json()) as {
     gatePhrase?: string;
     guestName?: string;

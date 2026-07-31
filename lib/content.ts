@@ -1,14 +1,15 @@
 import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
 import matter from "gray-matter";
-import { assertContentMarkdownWritable, isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import {
+  assertContentWritable,
+  isFilesystemContentStore,
+  isPostgresContentStore
+} from "@/lib/content-store";
 import {
   dbDeleteRawMarkdown,
   dbGetRawMarkdown,
-  dbIsSlugDeleted,
   dbListContentSlugs,
-  dbListDeletedSlugs,
-  dbRecordDeletedSlug,
   dbUpsertRawMarkdown
 } from "@/lib/content-markdown-db";
 import { remark } from "remark";
@@ -27,29 +28,26 @@ const INLINE_HASHTAG_PATTERN = /#([^\s#<]+)/g;
 async function listSlugsFromDisk(): Promise<string[]> {
   try {
     const files = await readdir(CONTENT_DIR);
-    return files.filter((f) => f.endsWith(".md")).map((f) => f.replace(/\.md$/, ""));
+    return files
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => f.replace(/\.md$/, ""))
+      .filter((slug) => isSafeContentSlug(slug));
   } catch {
     return [];
   }
 }
 
 async function listAllSlugsMerged(): Promise<string[]> {
-  const disk = await listSlugsFromDisk();
-  if (!isPostgresMarkdownStore()) {
-    return disk.sort((a, b) => a.localeCompare(b, "ja"));
+  if (isFilesystemContentStore()) {
+    return (await listSlugsFromDisk()).sort((a, b) => a.localeCompare(b, "ja"));
   }
-  const [dbSlugs, deleted] = await Promise.all([dbListContentSlugs(), dbListDeletedSlugs()]);
-  const diskVisible = disk.filter((s) => !deleted.has(s));
-  const set = new Set([...diskVisible, ...dbSlugs]);
-  return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
+  return (await dbListContentSlugs()).sort((a, b) => a.localeCompare(b, "ja"));
 }
 
 async function loadRawMarkdown(slug: string): Promise<{ raw: string; updatedAt: string } | null> {
   const normalized = normalizeSlugParam(slug);
-  if (isPostgresMarkdownStore()) {
-    if (await dbIsSlugDeleted(normalized)) return null;
-    const fromDb = await dbGetRawMarkdown(normalized);
-    if (fromDb) return fromDb;
+  if (isPostgresContentStore()) {
+    return dbGetRawMarkdown(normalized);
   }
   const filePath = path.join(CONTENT_DIR, `${normalized}.md`);
   try {
@@ -62,7 +60,7 @@ async function loadRawMarkdown(slug: string): Promise<{ raw: string; updatedAt: 
 
 async function persistMarkdown(slug: string, raw: string): Promise<void> {
   const normalized = normalizeSlugParam(slug);
-  if (isPostgresMarkdownStore()) {
+  if (isPostgresContentStore()) {
     await dbUpsertRawMarkdown(normalized, raw);
     return;
   }
@@ -73,20 +71,41 @@ async function persistMarkdown(slug: string, raw: string): Promise<void> {
 
 async function deleteMarkdownStorage(slug: string): Promise<void> {
   const normalized = normalizeSlugParam(slug);
-  if (isPostgresMarkdownStore()) {
+  if (isPostgresContentStore()) {
     await dbDeleteRawMarkdown(normalized);
-    await dbRecordDeletedSlug(normalized);
+    return;
   }
   const filePath = path.join(CONTENT_DIR, `${normalized}.md`);
   await unlink(filePath).catch(() => undefined);
 }
 
-export function normalizeSlugParam(slug: string) {
-  try {
-    return decodeURIComponent(slug);
-  } catch {
-    return slug;
+export function isSafeContentSlug(slug: string): boolean {
+  return (
+    Boolean(slug) &&
+    slug.length <= 200 &&
+    !slug.includes("\0") &&
+    !slug.includes("/") &&
+    !slug.includes("\\") &&
+    slug !== "." &&
+    slug !== ".." &&
+    !/[\r\n]/.test(slug)
+  );
+}
+
+export function normalizeSlugParam(slug: string): string {
+  if (typeof slug !== "string") throw new Error("Invalid content slug");
+  let decoded = slug;
+  for (let attempts = 0; attempts < 4 && decoded.includes("%"); attempts += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+    } catch {
+      throw new Error("Invalid content slug");
+    }
   }
+  if (!isSafeContentSlug(decoded)) throw new Error("Invalid content slug");
+  return decoded;
 }
 
 function parseTagsFromFrontmatter(value: unknown) {
@@ -286,26 +305,20 @@ export async function listPublicContents() {
 }
 
 export async function getContentBySlug(slug: string) {
-  const normalizedSlug = normalizeSlugParam(slug);
-  const candidates = Array.from(new Set([normalizedSlug, slug]));
+  const resolvedSlug = normalizeSlugParam(slug);
+  const loaded = await loadRawMarkdown(resolvedSlug);
 
-  let resolvedSlug: string | null = null;
-  let loaded: { raw: string; updatedAt: string } | null = null;
-  for (const candidate of candidates) {
-    const result = await loadRawMarkdown(candidate);
-    if (result) {
-      resolvedSlug = normalizeSlugParam(candidate);
-      loaded = result;
-      break;
-    }
-  }
-
-  if (!loaded || !resolvedSlug) {
+  if (!loaded) {
     throw new Error(`Content not found: ${slug}`);
   }
 
   const parsed = matter(loaded.raw);
-  const rawHtml = String(await remark().use(remarkGfm).use(remarkHtml, { sanitize: false }).process(parsed.content));
+  const rawHtml = String(
+    await remark()
+      .use(remarkGfm)
+      .use(remarkHtml, { allowDangerousHtml: false, allowDangerousProtocol: false })
+      .process(parsed.content)
+  );
   const html = convertHashtagParagraphs(rawHtml);
 
   return {
@@ -315,7 +328,7 @@ export async function getContentBySlug(slug: string) {
 }
 
 export async function setContentStatus(slug: string, status: "public" | "private") {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedSlug = normalizeSlugParam(slug);
   const loaded = await loadRawMarkdown(normalizedSlug);
   if (!loaded) throw new Error(`Content not found: ${slug}`);
@@ -367,7 +380,7 @@ export async function setContentStatus(slug: string, status: "public" | "private
 }
 
 export async function setContentTitle(slug: string, title: string) {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedSlug = normalizeSlugParam(slug);
   const loaded = await loadRawMarkdown(normalizedSlug);
   if (!loaded) throw new Error(`Content not found: ${slug}`);
@@ -385,7 +398,7 @@ export async function setContentTitle(slug: string, title: string) {
 }
 
 export async function setContentMagazines(slug: string, magazines: string[]) {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedSlug = normalizeSlugParam(slug);
   const loaded = await loadRawMarkdown(normalizedSlug);
   if (!loaded) throw new Error(`Content not found: ${slug}`);
@@ -408,7 +421,7 @@ export async function setContentMagazines(slug: string, magazines: string[]) {
 }
 
 export async function setContentThumbnail(slug: string, thumbnail: string) {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedSlug = normalizeSlugParam(slug);
   const loaded = await loadRawMarkdown(normalizedSlug);
   if (!loaded) throw new Error(`Content not found: ${slug}`);
@@ -430,7 +443,7 @@ async function rewriteContentMagazinesForSlug(
   slug: string,
   update: (currentMagazines: string[]) => string[]
 ) {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedSlug = normalizeSlugParam(slug);
   const loaded = await loadRawMarkdown(normalizedSlug);
   if (!loaded) return;
@@ -458,7 +471,7 @@ async function rewriteContentMagazinesForSlug(
 }
 
 export async function renameMagazineInAllContents(fromName: string, toName: string) {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedFrom = fromName.trim();
   const normalizedTo = toName.trim();
   if (!normalizedFrom || !normalizedTo || normalizedFrom === normalizedTo) return;
@@ -474,7 +487,7 @@ export async function renameMagazineInAllContents(fromName: string, toName: stri
 }
 
 export async function removeMagazineFromAllContents(name: string) {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedName = name.trim();
   if (!normalizedName) return;
 
@@ -498,9 +511,10 @@ function normalizeFileStem(value: string) {
 }
 
 async function stemExistsInStorage(stem: string): Promise<boolean> {
-  if (isPostgresMarkdownStore()) {
+  if (isPostgresContentStore()) {
     const row = await dbGetRawMarkdown(stem);
     if (row) return true;
+    return false;
   }
   try {
     await access(path.join(CONTENT_DIR, `${stem}.md`));
@@ -511,7 +525,8 @@ async function stemExistsInStorage(stem: string): Promise<boolean> {
 }
 
 export async function resolveUniqueMarkdownStem(originalFileName: string): Promise<string> {
-  const safeStem = normalizeFileStem(originalFileName.replace(/\.md$/i, "")) || `article-${Date.now()}`;
+  const proposedStem = normalizeFileStem(originalFileName.replace(/\.md$/i, ""));
+  const safeStem = isSafeContentSlug(proposedStem) ? proposedStem : `article-${Date.now()}`;
   let candidate = safeStem;
   let suffix = 1;
   while (await stemExistsInStorage(candidate)) {
@@ -523,20 +538,20 @@ export async function resolveUniqueMarkdownStem(originalFileName: string): Promi
 
 /** 管理画面からの新規 .md アップロード（Postgres またはローカル content/） */
 export async function createMarkdownUpload(originalFileName: string, bytes: Buffer): Promise<string> {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const slug = await resolveUniqueMarkdownStem(originalFileName);
   await persistMarkdown(slug, bytes.toString("utf8"));
   return slug;
 }
 
 export async function replaceMarkdownFileContent(slug: string, bytes: Buffer): Promise<void> {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const normalizedSlug = normalizeSlugParam(slug);
   await persistMarkdown(normalizedSlug, bytes.toString("utf8"));
 }
 
 export async function deleteStoredMarkdown(slug: string): Promise<void> {
-  assertContentMarkdownWritable();
+  assertContentWritable();
   await deleteMarkdownStorage(slug);
 }
 

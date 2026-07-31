@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RecoveryGuestPicker, type RecoveryGuestOption } from "./recovery-guest-picker";
 import { shouldShowPermitPushButton } from "@/lib/push-permit-ui";
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
+import { useNotificationEventStream } from "@/lib/use-notification-event-stream";
+import { useNotificationShell } from "@/lib/use-notification-shell";
 
 type RecoveryFeedItem = {
   kind: "recovery";
@@ -48,13 +50,10 @@ function truncateBody(text: string, max = 120) {
 }
 
 export function AdminNotificationBell() {
-  const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"unread" | "history">("unread");
   const [items, setItems] = useState<FeedItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [gate, setGate] = useState<"loading" | "guest" | "admin">("loading");
-  const [mounted, setMounted] = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 56, right: 16 });
   const [sendingRecoveryId, setSendingRecoveryId] = useState<string | null>(null);
   const [smtpConfigured, setSmtpConfigured] = useState(false);
   const [recoveryGuestOptions, setRecoveryGuestOptions] = useState<RecoveryGuestOption[]>([]);
@@ -62,13 +61,19 @@ export function AdminNotificationBell() {
   const [recoveryGuestPick, setRecoveryGuestPick] = useState<Record<string, string>>({});
   const [pushPermitVisible, setPushPermitVisible] = useState(false);
   const [pushPermitBusy, setPushPermitBusy] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [pushPermitMessage, setPushPermitMessage] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const isOutsideTargetIgnored = useCallback(
+    (target: EventTarget | null) =>
+      target instanceof Element && Boolean(target.closest(".admin-notification-guest-menu")),
+    []
+  );
+  const { mounted, open, panelPos, setOpen } = useNotificationShell({
+    bellRef,
+    panelRef,
+    isOutsideTargetIgnored
+  });
 
   /** 通知タップで /admin?notify=1 に来たときは、お知らせを開いた状態で見せる */
   useEffect(() => {
@@ -79,7 +84,7 @@ export function AdminNotificationBell() {
     setOpen(true);
     url.searchParams.delete("notify");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-  }, [gate]);
+  }, [gate, setOpen]);
 
   const refreshPushPermitVisibility = useCallback(async () => {
     setPushPermitVisible(await shouldShowPermitPushButton());
@@ -109,11 +114,20 @@ export function AdminNotificationBell() {
     setPushPermitBusy(true);
     try {
       const result = await subscribeRoomPush();
-      if (result === "granted") setPushPermitVisible(false);
+      if (result === "granted") {
+        setPushPermitMessage("通知を許可しました。");
+      } else if (result === "denied") {
+        setPushPermitMessage("通知は許可されませんでした。ブラウザのサイト設定から変更できます。");
+      } else if (result === "error") {
+        setPushPermitMessage("通知の設定を保存できませんでした。接続を確認して、もう一度お試しください。");
+      } else {
+        setPushPermitMessage("この端末では通知を設定できません。");
+      }
     } finally {
       setPushPermitBusy(false);
+      void refreshPushPermitVisibility();
     }
-  }, []);
+  }, [refreshPushPermitVisibility]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/admin/notifications?view=${viewMode}`, { cache: "no-store" });
@@ -150,31 +164,12 @@ export function AdminNotificationBell() {
     return () => window.removeEventListener("admin-notifications-refresh", onRefresh);
   }, [load]);
 
-  useEffect(() => {
-    if (gate !== "admin") return;
-    const es = new EventSource("/api/admin/notifications/events");
-    es.onmessage = () => void load();
-    return () => es.close();
-  }, [gate, load]);
-
-  useLayoutEffect(() => {
-    if (!open || !bellRef.current) return;
-    const r = bellRef.current.getBoundingClientRect();
-    setPanelPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (wrapRef.current?.contains(t) || panelRef.current?.contains(t)) return;
-      /** RecoveryGuestPicker のメニューは portal で body 直下のため、外側扱いにならないようにする */
-      if (t.closest(".admin-notification-guest-menu")) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  useNotificationEventStream({
+    enabled: gate === "admin",
+    url: "/api/admin/notifications/events",
+    onEvent: () => void load(),
+    onFallback: () => void load()
+  });
 
   async function markRead(id: string) {
     if (viewMode === "unread") {
@@ -213,12 +208,14 @@ export function AdminNotificationBell() {
       window.alert("再発行メールを送る相手を、台帳から選んでください。");
       return;
     }
+    const phrase = window.prompt("新しい秘密の言葉を入力してください。メールで送信され、以前の言葉は使えなくなります。");
+    if (!phrase?.trim()) return;
     setSendingRecoveryId(row.id);
     try {
       const res = await fetch("/api/admin/recovery-send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: row.id, guestId })
+        body: JSON.stringify({ id: row.id, guestId, phrase })
       });
       if (res.ok) {
         if (viewMode === "unread") {
@@ -235,6 +232,8 @@ export function AdminNotificationBell() {
         window.alert("選択したユーザーが台帳に見つかりません。一覧を更新してから再度お試しください。");
       } else if (res.status === 400 && err.error === "invalid_contact_email") {
         window.alert("宛先メールアドレスが無効です。データベース上の連絡先を修正してください。");
+      } else if (res.status === 400 && err.error === "invalid_phrase") {
+        window.alert("秘密の言葉の形式を確認してください。空白は使えません。");
       } else if (res.status === 502) {
         window.alert("メールの送信に失敗しました。SMTP 設定とログを確認してください。");
       } else {
@@ -302,6 +301,11 @@ export function AdminNotificationBell() {
               ? "新規登録・再発行の問い合わせ・ゲストからの文通です。新規登録は「確認した」で消えます。再発行はメール送信または「無視」、文通はスレッドを開くか「対応済み」で消えます。"
               : "無視・確認済み・対応済みにした通知の履歴です。誤って無視した問い合わせもここから内容を確認し、再発行メールを送れます。フィルターをもう一度押すと未読一覧に戻ります。"}
           </p>
+          {pushPermitMessage ? (
+            <p className="admin-notification-panel-desc" role="status">
+              {pushPermitMessage}
+            </p>
+          ) : null}
           {!smtpConfigured ? (
             <p className="admin-notification-smtp-hint" role="status">
               <span className="material-symbols-outlined admin-notification-smtp-icon" aria-hidden="true">
@@ -469,7 +473,7 @@ export function AdminNotificationBell() {
   ) : null;
 
   return (
-    <div className="admin-notification-wrap" ref={wrapRef}>
+    <div className="admin-notification-wrap">
       <button
         ref={bellRef}
         type="button"

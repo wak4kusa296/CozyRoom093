@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { AppImage } from "@/app/components/app-image";
 import { AppLoadingWave } from "@/app/components/app-loading-wave";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import type { RoomNotificationItem, RoomNotificationView } from "@/lib/room-notifications";
@@ -10,25 +11,34 @@ import { shouldShowPermitPushButton } from "@/lib/push-permit-ui";
 import { subscribeRoomPush } from "@/lib/room-push-subscribe-client";
 import { redirectHomeIfUnauthorized } from "@/lib/redirect-home-if-unauthorized";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
+import { useNotificationEventStream } from "@/lib/use-notification-event-stream";
+import { useNotificationShell } from "@/lib/use-notification-shell";
 
 export function RoomNotificationBell() {
-  const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<RoomNotificationView>("unread");
   const [items, setItems] = useState<RoomNotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   /** /room にいる時点でログイン前提。401 のときだけ非表示 */
   const [sessionActive, setSessionActive] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  const [panelPos, setPanelPos] = useState({ top: 56, right: 16 });
-  const wrapRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const bellRef = useRef<HTMLButtonElement | null>(null);
   const pushDialogRef = useRef<HTMLDialogElement | null>(null);
   const [pushPermitVisible, setPushPermitVisible] = useState(false);
   const [pushPermitBusy, setPushPermitBusy] = useState(false);
+  const [pushPermitMessage, setPushPermitMessage] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(false);
   const nonSilentLoadCountRef = useRef(0);
   const loadEffectFirstRun = useRef(true);
+  const isOutsideTargetIgnored = useCallback(
+    (target: EventTarget | null) =>
+      target instanceof Node && Boolean(pushDialogRef.current?.contains(target)),
+    []
+  );
+  const { mounted, open, panelPos, setOpen } = useNotificationShell({
+    bellRef,
+    panelRef,
+    isOutsideTargetIgnored
+  });
 
   const [pushModal, setPushModal] = useState<{
     title: string;
@@ -41,10 +51,6 @@ export function RoomNotificationBell() {
     /** 未読一覧から開いたとき、モーダル表示と同タイミングで既読にする */
     pendingMarkReadId?: string;
   } | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const refreshPushPermitVisibility = useCallback(async () => {
     setPushPermitVisible(await shouldShowPermitPushButton());
@@ -74,11 +80,20 @@ export function RoomNotificationBell() {
     setPushPermitBusy(true);
     try {
       const result = await subscribeRoomPush();
-      if (result === "granted") setPushPermitVisible(false);
+      if (result === "granted") {
+        setPushPermitMessage("通知を許可しました。");
+      } else if (result === "denied") {
+        setPushPermitMessage("通知は許可されませんでした。ブラウザのサイト設定から変更できます。");
+      } else if (result === "error") {
+        setPushPermitMessage("通知の設定を保存できませんでした。接続を確認して、もう一度お試しください。");
+      } else {
+        setPushPermitMessage("この端末では通知を設定できません。");
+      }
     } finally {
       setPushPermitBusy(false);
+      void refreshPushPermitVisibility();
     }
-  }, []);
+  }, [refreshPushPermitVisibility]);
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent === true;
@@ -122,12 +137,12 @@ export function RoomNotificationBell() {
     return () => clearInterval(t);
   }, [load]);
 
-  useEffect(() => {
-    if (!sessionActive) return;
-    const es = new EventSource("/api/room/notifications/events");
-    es.onmessage = () => void load({ silent: true });
-    return () => es.close();
-  }, [sessionActive, load]);
+  useNotificationEventStream({
+    enabled: sessionActive,
+    url: "/api/room/notifications/events",
+    onEvent: () => void load({ silent: true }),
+    onFallback: () => void load({ silent: true })
+  });
 
   useEffect(() => {
     const onRefresh = () => void load({ silent: true });
@@ -151,38 +166,6 @@ export function RoomNotificationBell() {
       void load({ silent: true });
     }
   }, [load]);
-
-  useLayoutEffect(() => {
-    if (!open || !bellRef.current) return;
-    const r = bellRef.current.getBoundingClientRect();
-    setPanelPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
-  }, [open, viewMode]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (
-        wrapRef.current?.contains(t) ||
-        panelRef.current?.contains(t) ||
-        pushDialogRef.current?.contains(t)
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -262,6 +245,11 @@ export function RoomNotificationBell() {
             ? "新着公開のお知らせと、管理者からの文通です。公開のお知らせは記事を開くと既読になり、返信のお知らせは該当記事で文通を開くと既読になります。手動プッシュは本文モーダルを開いたときに既読になります。"
             : "既読にした通知の履歴です。プッシュ通知のカードをタップすると本文を表示できます。フィルターをもう一度押すと未読一覧に戻ります。"}
         </p>
+        {pushPermitMessage ? (
+          <p className="admin-notification-panel-desc" role="status">
+            {pushPermitMessage}
+          </p>
+        ) : null}
       </header>
       {listLoading ? (
         <AppLoadingWave className="room-notification-list-loading" label="通知を読み込み中" />
@@ -343,7 +331,7 @@ export function RoomNotificationBell() {
   ) : null;
 
   return (
-    <div className="admin-notification-wrap" ref={wrapRef}>
+    <div className="admin-notification-wrap">
       <button
         ref={bellRef}
         type="button"
@@ -400,10 +388,12 @@ export function RoomNotificationBell() {
                 <p className="room-notification-push-dialog-meta">{formatSiteDateTimeWithSeconds(pushModal.sentAt)}</p>
                 {pushModal.imageUrl ? (
                   <div className="room-notification-push-dialog-image-wrap">
-                    <img
+                    <AppImage
                       src={pushModal.imageUrl}
                       alt=""
                       className="room-notification-push-dialog-image"
+                      width={1200}
+                      height={675}
                     />
                   </div>
                 ) : null}

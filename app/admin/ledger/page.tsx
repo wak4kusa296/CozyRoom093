@@ -190,18 +190,29 @@ export default async function AdminLedgerPage({
     ? resolvedSearchParams.status[0] ?? "all"
     : resolvedSearchParams.status ?? "all";
 
-  const credentials = await listGuestCredentialsWithStatus().catch(
-    (error): Awaited<ReturnType<typeof listGuestCredentialsWithStatus>> => {
-      logLedgerFailure("listGuestCredentialsWithStatus", error);
-      return [];
-    }
-  );
-  const gates = await listRegistrationGates().catch(
-    (error): Awaited<ReturnType<typeof listRegistrationGates>> => {
-      logLedgerFailure("listRegistrationGates", error);
-      return [];
-    }
-  );
+  const [credentialsResult, gatesResult] = await Promise.all([
+    listGuestCredentialsWithStatus()
+      .then((value) => ({ value, failed: false }))
+      .catch((error) => {
+        logLedgerFailure("listGuestCredentialsWithStatus", error);
+        return {
+          value: [] as Awaited<ReturnType<typeof listGuestCredentialsWithStatus>>,
+          failed: true
+        };
+      }),
+    listRegistrationGates()
+      .then((value) => ({ value, failed: false }))
+      .catch((error) => {
+        logLedgerFailure("listRegistrationGates", error);
+        return {
+          value: [] as Awaited<ReturnType<typeof listRegistrationGates>>,
+          failed: true
+        };
+      })
+  ]);
+  const credentials = credentialsResult.value;
+  const gates = gatesResult.value;
+  const hasLoadError = credentialsResult.failed || gatesResult.failed;
   const filteredCredentials = credentials.filter((item) => {
     if (statusFilter === "active") return item.isActive;
     if (statusFilter === "inactive") return !item.isActive;
@@ -216,9 +227,14 @@ export default async function AdminLedgerPage({
       <section className="card admin-page-card">
         <div className="admin-page-header">
           <h1>ユーザー管理</h1>
-          <p className="lead">ユーザーと秘密の言葉の対応表を編集できます。</p>
+          <p className="lead">ユーザーと秘密の言葉を管理できます。既存の秘密の言葉は表示できません。</p>
         </div>
         <AdminNav />
+        {hasLoadError ? (
+          <p className="message" role="alert">
+            一部の台帳データを読み込めませんでした。ページを再読み込みして、もう一度お試しください。
+          </p>
+        ) : null}
 
         <section className="stack admin-panel">
           <h2>手書きのパスワード</h2>
@@ -282,7 +298,7 @@ export default async function AdminLedgerPage({
                       </td>
                       <td data-label="手書きのパスワード">
                         <div className="admin-phrase-line">
-                          <code className="admin-phrase-text">{gate.phrase}</code>
+                          <span className="meta">設定済み</span>
                           <details className="admin-edit-disclosure">
                             <summary className="admin-edit-summary" aria-label="手書きのパスワードの編集を開く">
                               <span className="material-symbols-outlined admin-nav-icon" aria-hidden="true">
@@ -293,10 +309,10 @@ export default async function AdminLedgerPage({
                               <input type="hidden" name="gateId" value={gate.gateId} />
                               <textarea
                                 name="phrase"
-                                defaultValue={gate.phrase}
                                 required
                                 rows={1}
                                 className="admin-phrase-editor"
+                                placeholder="新しいパスワード"
                                 lang="en"
                                 spellCheck={false}
                                 title="半角の英数字・記号のみ"
@@ -425,11 +441,11 @@ export default async function AdminLedgerPage({
                         <input type="hidden" name="guestId" value={item.guestId} />
                         <textarea
                           name="phrase"
-                          defaultValue={item.phrase}
                           required
                           rows={1}
                           className="admin-phrase-editor"
                           aria-label="秘密の言葉"
+                          placeholder="新しい秘密の言葉"
                         />
                         <button type="submit" className="sr-only" tabIndex={-1}>
                           保存

@@ -123,7 +123,6 @@ export function RoomSearchClient({
               className="room-search-input"
               aria-autocomplete="list"
               aria-controls="room-search-suggestions"
-              aria-expanded={suggestOpen && hasSuggestions}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setSuggestOpen(true);
@@ -149,7 +148,7 @@ export function RoomSearchClient({
               ) : null}
               <ul className="room-search-suggest-list">
                 {tagSuggestions.map((tag) => (
-                  <li key={`tag:${tag}`} role="option">
+                  <li key={`tag:${tag}`} role="option" aria-selected={false}>
                     <button
                       type="button"
                       className="room-search-suggest-item"
@@ -171,7 +170,7 @@ export function RoomSearchClient({
               ) : null}
               <ul className="room-search-suggest-list">
                 {magazineSuggestions.map((name) => (
-                  <li key={`mag:${name}`} role="option">
+                  <li key={`mag:${name}`} role="option" aria-selected={false}>
                     <button
                       type="button"
                       className="room-search-suggest-item"

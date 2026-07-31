@@ -1,9 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { findGuestByPhrase, isGuestCredentialActive, parseGuestCredentialsEnv } from "@/lib/guest-credentials";
+import { findGuestByPhrase, isGuestCredentialActive } from "@/lib/guest-credentials";
 
 const SESSION_COOKIE_NAME = "room_session";
-const DEFAULT_SECRET = "room-development-secret";
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
 type SessionRole = "guest" | "admin";
@@ -18,11 +17,22 @@ export type SessionPayload = {
 export type Guest = {
   id: string;
   name: string;
-  phrase: string;
 };
 
+export class AuthConfigurationError extends Error {
+  constructor() {
+    super("Authentication is not configured.");
+  }
+}
+
+function requiredSecret(name: "SESSION_SECRET" | "ADMIN_SECRET"): string {
+  const secret = process.env[name]?.trim();
+  if (!secret || secret.length < 16) throw new AuthConfigurationError();
+  return secret;
+}
+
 function getSecret() {
-  return process.env.SESSION_SECRET ?? DEFAULT_SECRET;
+  return requiredSecret("SESSION_SECRET");
 }
 
 function sign(value: string) {
@@ -59,21 +69,7 @@ export async function authenticateGuest(phraseInput: string) {
   const phrase = phraseInput.trim();
   if (!phrase) return null;
 
-  try {
-    const guest = await findGuestByPhrase(phrase);
-    if (guest) return guest;
-    return null;
-  } catch {
-    // DB 利用不可時のみ env フォールバック
-  }
-
-  const envGuest = parseGuestCredentialsEnv().find((item) => item.phrase === phrase);
-  if (!envGuest) return null;
-  return {
-    id: envGuest.guestId,
-    name: envGuest.guestName,
-    phrase: envGuest.phrase
-  } satisfies Guest;
+  return findGuestByPhrase(phrase);
 }
 
 export async function enforceGuestSessionActiveOrRedirect() {
@@ -85,8 +81,9 @@ export async function enforceGuestSessionActiveOrRedirect() {
 }
 
 export function authenticateAdmin(secretInput: string) {
-  const expected = process.env.ADMIN_SECRET ?? "Wkks.296";
-  return secretInput.trim() === expected;
+  const expected = Buffer.from(requiredSecret("ADMIN_SECRET"), "utf8");
+  const provided = Buffer.from(secretInput.trim(), "utf8");
+  return provided.length === expected.length && timingSafeEqual(provided, expected);
 }
 
 export async function createSession(guest: Guest, role: SessionRole = "guest") {
@@ -117,7 +114,11 @@ export async function getSession() {
   const token = store.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
 
-  return decode(token);
+  try {
+    return decode(token);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -144,6 +145,5 @@ export async function requireGuestSession() {
 
 export const adminStub: Guest = {
   id: "admin",
-  name: "管理者",
-  phrase: ""
+  name: "管理者"
 };

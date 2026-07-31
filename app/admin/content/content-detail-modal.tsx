@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminDeleteConfirmForm, useAdminDeleteConfirm } from "@/app/admin/admin-delete-confirm";
+import { AppImage } from "@/app/components/app-image";
 import { MagazineMultiToggle } from "@/app/admin/content/magazine-multi-toggle";
 import { readAdminJson } from "@/lib/admin-read-json";
 import { useFocusTrap } from "@/lib/use-focus-trap";
@@ -182,7 +183,7 @@ export function ContentDetailModal({
               <div className="admin-thumb-preview admin-thumb-preview-wrap" aria-busy={thumbUploading}>
                 <div className="admin-thumb-preview-fill">
                   {item.thumbnail ? (
-                    <img src={`/thumbnails/${item.thumbnail}`} alt="" />
+                    <AppImage src={`/thumbnails/${item.thumbnail}`} alt="" fill sizes="320px" />
                   ) : (
                     <span className="meta">サムネイルなし</span>
                   )}

@@ -15,18 +15,6 @@ import type {
 
 /** 文通（adminLetter）はゲスト行があって初めて存在するため、アカウント日時では切らない。 */
 
-function parseAdminLetterNotificationId(id: string): { slugKey: string; guestKey: string; createdAt: string } | null {
-  if (!id.startsWith("adminLetter|")) return null;
-  const rest = id.slice("adminLetter|".length);
-  const parts = rest.split("|");
-  if (parts.length < 3) return null;
-  const slugKey = parts[0] ?? "";
-  const guestKey = parts[1] ?? "";
-  const createdAt = parts.slice(2).join("|");
-  if (!slugKey || !guestKey || !createdAt) return null;
-  return { slugKey, guestKey, createdAt };
-}
-
 export async function buildUnreadRoomNotifications(
   guestId: string,
   reads: Record<string, string>,
@@ -38,7 +26,7 @@ export async function buildUnreadRoomNotifications(
   const contentItems: RoomNotificationContentItem[] = [];
   for (const item of publicItems) {
     const published = item.published_at ?? item.date;
-    if (isEventBeforeGuestAccount(published, accountStartedAtIso)) continue;
+    if (isEventStrictlyBeforeCutoff(published, accountStartedAtIso)) continue;
     const id = `content|${item.slug}`;
     if (reads[id]) continue;
     contentItems.push({
@@ -69,7 +57,7 @@ export async function buildUnreadRoomNotifications(
   const pushItems: RoomNotificationPushItem[] = [];
   for (const p of broadcasts) {
     if (!pushAppliesToGuest(p, guestId)) continue;
-    if (isEventStrictlyBeforeCutoff(p.sentAt, registrationCutoffIso)) continue;
+    if (isEventStrictlyBeforeCutoff(p.sentAt, accountStartedAtIso)) continue;
     const id = `push|${p.id}`;
     if (reads[id]) continue;
     if (isEventAtOrBeforeCutoff(p.sentAt, baselineIso)) continue;
@@ -97,10 +85,8 @@ export async function buildHistoryRoomNotifications(
   slugBySlugKey: Map<string, string>,
   registrationCutoffIso?: string | null
 ): Promise<RoomNotificationItem[]> {
-  const guestKeyExpected = normalizeThreadKey(guestId);
-
   const adminLetters = await listAdminLetterEventsForGuest(guestId);
-  const bodyById = new Map(adminLetters.map((r) => [r.id, r.body] as const));
+  const eventById = new Map(adminLetters.map((e) => [e.id, e] as const));
 
   const out: RoomNotificationItem[] = [];
 
@@ -134,24 +120,16 @@ export async function buildHistoryRoomNotifications(
     }
 
     if (key.startsWith("adminLetter|")) {
-      const parsed = parseAdminLetterNotificationId(key);
-      if (!parsed) continue;
-      // DB の guest_id が正規化前の値でも、セッション側と同一人物なら履歴に出す
-      if (
-        normalizeThreadKey(parsed.guestKey) !== guestKeyExpected &&
-        parsed.guestKey.trim() !== guestId.trim()
-      ) {
-        continue;
-      }
-      const slugKeyNorm = normalizeThreadKey(parsed.slugKey);
-      const slug = slugBySlugKey.get(slugKeyNorm) ?? slugBySlugKey.get(parsed.slugKey) ?? parsed.slugKey;
+      const event = eventById.get(key);
+      if (!event) continue;
+      const slug = slugBySlugKey.get(normalizeThreadKey(event.slugKey)) ?? event.slugKey;
       out.push({
         kind: "reply",
         id: key,
-        slugKey: parsed.slugKey,
+        slugKey: event.slugKey,
         slug,
-        body: bodyById.get(key) ?? "",
-        createdAt: parsed.createdAt,
+        body: event.body,
+        createdAt: event.createdAt,
         readAt
       });
     }

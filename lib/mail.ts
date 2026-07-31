@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
 function parsePort(value: string | undefined, fallback: number) {
   const n = Number(value);
@@ -82,12 +83,12 @@ export async function sendTransactionalEmail(opts: { to: string; subject: string
   const fromAddress = extractAddress(rawFrom);
   const fromDomain = addressDomain(rawFrom);
 
-  const transporter = nodemailer.createTransport({
+  const transportOptions: SMTPTransport.Options = {
     host,
     port,
     secure,
     ...(relayNoAuth
-      ? { auth: false as const }
+      ? {}
       : {
           auth: {
             user: process.env.SMTP_USER!.trim(),
@@ -95,7 +96,8 @@ export async function sendTransactionalEmail(opts: { to: string; subject: string
           }
         }),
     ...(port === 587 && !secure ? { requireTLS: true } : {})
-  });
+  };
+  const transporter = nodemailer.createTransport(transportOptions);
 
   await transporter.sendMail({
     from: buildFromHeader(rawFrom),

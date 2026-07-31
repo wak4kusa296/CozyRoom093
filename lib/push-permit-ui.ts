@@ -1,7 +1,7 @@
 /**
  * 通知センター「通知を許可」表示判定。
  * - VAPID が有効なときだけ（NEXT_PUBLIC または GET で確認）
- * - 通知権限が未付与なら表示
+ * - 通知権限が未選択なら表示（拒否済みには非動作の許可ボタンを出さない）
  * - 権限付与済みでも Push 購読が無ければ表示（subscribeRoomPush で登録）
  */
 
@@ -31,9 +31,10 @@ export async function shouldShowPermitPushButton(): Promise<boolean> {
   const hasVapid = vapidConfiguredFromEnv() || (await vapidConfiguredFromApi());
   if (!hasVapid) return false;
 
-  if (Notification.permission !== "granted") {
+  if (Notification.permission === "default") {
     return true;
   }
+  if (Notification.permission === "denied") return false;
 
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     return false;

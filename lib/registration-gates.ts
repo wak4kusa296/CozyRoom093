@@ -1,9 +1,9 @@
 import { getDbPool } from "@/lib/db";
 import { isValidHandwrittenPassword } from "@/lib/passphrase-rules";
+import { hashSecret, verifySecret } from "@/lib/secret-hash";
 
 export type RegistrationGate = {
   gateId: string;
-  phrase: string;
   label: string;
   isActive: boolean;
 };
@@ -23,18 +23,16 @@ export async function listRegistrationGates(): Promise<RegistrationGate[]> {
   const pool = getDbPool();
   const result = await pool.query<{
     gate_id: string;
-    phrase: string;
     label: string;
     is_active: boolean;
   }>(`
-    SELECT gate_id, phrase, label, is_active
+    SELECT gate_id, label, is_active
     FROM registration_gates
     ORDER BY created_at DESC
   `);
   return result.rows.map(
-    (row: { gate_id: string; phrase: string; label: string; is_active: boolean }) => ({
+    (row: { gate_id: string; label: string; is_active: boolean }) => ({
       gateId: row.gate_id,
-      phrase: row.phrase,
       label: row.label,
       isActive: row.is_active
     })
@@ -48,26 +46,22 @@ export async function findActiveRegistrationGateByPhrase(phraseInput: string): P
   const pool = getDbPool();
   const result = await pool.query<{
     gate_id: string;
-    phrase: string;
+    phrase_hash: string;
     label: string;
     is_active: boolean;
   }>(
     `
-    SELECT gate_id, phrase, label, is_active
+    SELECT gate_id, phrase_hash, label, is_active
     FROM registration_gates
-    WHERE phrase = $1 AND is_active = TRUE
-    LIMIT 1
-    `,
-    [phrase]
+    WHERE is_active = TRUE
+    `
   );
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
-    gateId: row.gate_id,
-    phrase: row.phrase,
-    label: row.label,
-    isActive: row.is_active
-  };
+  for (const row of result.rows) {
+    if (await verifySecret(phrase, row.phrase_hash)) {
+      return { gateId: row.gate_id, label: row.label, isActive: row.is_active };
+    }
+  }
+  return null;
 }
 
 export async function upsertRegistrationGate(input: {
@@ -84,15 +78,15 @@ export async function upsertRegistrationGate(input: {
   const pool = getDbPool();
   await pool.query(
     `
-    INSERT INTO registration_gates (gate_id, phrase, label, is_active)
+    INSERT INTO registration_gates (gate_id, phrase_hash, label, is_active)
     VALUES ($1, $2, $3, TRUE)
     ON CONFLICT (gate_id)
     DO UPDATE SET
-      phrase = EXCLUDED.phrase,
+      phrase_hash = EXCLUDED.phrase_hash,
       label = EXCLUDED.label,
       updated_at = NOW()
     `,
-    [gateId, phrase, label]
+    [gateId, await hashSecret(phrase), label]
   );
   return "ok";
 }
@@ -110,10 +104,10 @@ export async function updateRegistrationGatePhrase(
   await pool.query(
     `
     UPDATE registration_gates
-    SET phrase = $2, updated_at = NOW()
+    SET phrase_hash = $2, updated_at = NOW()
     WHERE gate_id = $1
     `,
-    [gateId, phrase]
+    [gateId, await hashSecret(phrase)]
   );
   return "ok";
 }

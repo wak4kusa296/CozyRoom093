@@ -13,31 +13,41 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
-export type RoomPushSubscribeResult = "granted" | "denied" | "no-vapid" | "unsupported";
+export type RoomPushSubscribeResult = "granted" | "denied" | "no-vapid" | "unsupported" | "error";
 
 export async function subscribeRoomPush(): Promise<RoomPushSubscribeResult> {
   if (typeof window === "undefined" || !("Notification" in window) || !("PushManager" in window)) {
     return "unsupported";
   }
-  const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
-  const data = (await res.json()) as { vapidPublicKey?: string | null };
-  if (!data.vapidPublicKey) return "no-vapid";
+  let vapidPublicKey: string | null | undefined;
+  try {
+    const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
+    if (!res.ok) return "error";
+    const data = (await res.json()) as { vapidPublicKey?: string | null };
+    vapidPublicKey = data.vapidPublicKey;
+  } catch {
+    return "error";
+  }
+  if (!vapidPublicKey) return "no-vapid";
 
   const perm = await Notification.requestPermission();
   if (perm !== "granted") return "denied";
 
-  const reg = await navigator.serviceWorker.register("/sw.js");
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(data.vapidPublicKey) as BufferSource
-  });
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
+    });
 
-  const postRes = await fetch("/api/room/push-subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub.toJSON())
-  });
-  redirectHomeIfUnauthorized(postRes.status);
-  if (!postRes.ok) return "denied";
-  return "granted";
+    const postRes = await fetch("/api/room/push-subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sub.toJSON())
+    });
+    redirectHomeIfUnauthorized(postRes.status);
+    return postRes.ok ? "granted" : "error";
+  } catch {
+    return "error";
+  }
 }

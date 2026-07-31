@@ -1,9 +1,11 @@
 /**
- * guest_credentials を空にしたあと、GUEST_PASSPHRASES から再投入する。
+ * GUEST_PASSPHRASES から guest_credentials に scrypt ハッシュを同期する。
  * 使い方: DATABASE_URL=... node scripts/sync-guests-from-env.mjs
  */
 import dotenv from "dotenv";
 import pg from "pg";
+import { randomBytes, scrypt as scryptCallback } from "node:crypto";
+import { promisify } from "node:util";
 import { resolveDatabaseUrl } from "./resolve-database-url.mjs";
 
 dotenv.config({ path: ".env.local" });
@@ -16,7 +18,7 @@ if (!databaseUrl) {
 }
 
 function parseGuestCredentialsEnv() {
-  const raw = process.env.GUEST_PASSPHRASES ?? "guest1:morningdew";
+  const raw = process.env.GUEST_PASSPHRASES ?? "";
   return raw
     .split(",")
     .map((entry) => entry.trim())
@@ -28,6 +30,13 @@ function parseGuestCredentialsEnv() {
       return { guestId: guestName, guestName, phrase: guestPhrase };
     })
     .filter((item) => item.phrase.length > 0);
+}
+
+const scrypt = promisify(scryptCallback);
+async function hashSecret(secret) {
+  const salt = randomBytes(16);
+  const derivedKey = await scrypt(secret, salt, 32);
+  return `scrypt$16384$8$1$32$${salt.toString("base64url")}$${derivedKey.toString("base64url")}`;
 }
 
 const items = parseGuestCredentialsEnv();
@@ -43,15 +52,15 @@ try {
   for (const item of items) {
     await client.query(
       `
-      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
+      INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active)
       VALUES ($1, $2, $3, TRUE)
       ON CONFLICT (guest_id)
       DO UPDATE SET
         guest_name = EXCLUDED.guest_name,
-        phrase = EXCLUDED.phrase,
+        credential_hash = EXCLUDED.credential_hash,
         updated_at = NOW()
       `,
-      [item.guestId, item.guestName, item.phrase]
+      [item.guestId, item.guestName, await hashSecret(item.phrase)]
     );
   }
   await client.query("COMMIT");

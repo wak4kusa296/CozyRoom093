@@ -3,7 +3,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import { isPostgresAssetStore } from "@/lib/content-store";
 import { dbUpsertPushUploadBlob } from "@/lib/push-upload-blobs-db";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   const buf = Buffer.from(await file.arrayBuffer());
 
   try {
-    if (isPostgresMarkdownStore()) {
+    if (isPostgresAssetStore()) {
       await dbUpsertPushUploadBlob(name, buf, type);
     } else {
       const dir = path.join(process.cwd(), "public", "uploads", "push");

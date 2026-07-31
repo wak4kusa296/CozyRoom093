@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 function isStandalonePwa(): boolean {
   if (typeof window === "undefined") return false;
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
@@ -25,9 +30,11 @@ export function RoomPwaInstall() {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
-    setStandalone(isStandalonePwa());
-    setIos(isIosDevice());
-    setReady(true);
+    queueMicrotask(() => {
+      setStandalone(isStandalonePwa());
+      setIos(isIosDevice());
+      setReady(true);
+    });
 
     function onBip(e: Event) {
       e.preventDefault();

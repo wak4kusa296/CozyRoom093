@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import { isFilesystemContentStore, isPostgresAssetStore } from "@/lib/content-store";
 import { dbGetPushUploadBlob } from "@/lib/push-upload-blobs-db";
 
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ export async function GET(_request: Request, context: { params: Promise<{ filena
     return new Response("Not Found", { status: 404 });
   }
 
-  if (isPostgresMarkdownStore()) {
+  if (isPostgresAssetStore()) {
     const row = await dbGetPushUploadBlob(filename);
     if (row) {
       return new Response(new Uint8Array(row.data), {
@@ -35,8 +35,10 @@ export async function GET(_request: Request, context: { params: Promise<{ filena
         }
       });
     }
+    return new Response("Not Found", { status: 404 });
   }
 
+  if (!isFilesystemContentStore()) return new Response("Not Found", { status: 404 });
   try {
     const buf = await readFile(path.join(process.cwd(), "public", "uploads", "push", filename));
     return new Response(new Uint8Array(buf), {

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { AppImage } from "@/app/components/app-image";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import { formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
 
@@ -22,11 +23,7 @@ export type PushHistoryRow = {
 export function PushHistory({ pushes }: { pushes: PushHistoryRow[] }) {
   const [modal, setModal] = useState<PushHistoryRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [mounted] = useState(() => typeof document !== "undefined");
 
   useLayoutEffect(() => {
     if (!modal) return;
@@ -86,7 +83,7 @@ export function PushHistory({ pushes }: { pushes: PushHistoryRow[] }) {
           </p>
           {modal.imageUrl ? (
             <div className="room-notification-push-dialog-image-wrap">
-              <img src={modal.imageUrl} alt="" className="room-notification-push-dialog-image" />
+              <AppImage src={modal.imageUrl} alt="" className="room-notification-push-dialog-image" width={1200} height={675} />
             </div>
           ) : null}
           <div className="room-notification-push-dialog-body">{modal.body}</div>

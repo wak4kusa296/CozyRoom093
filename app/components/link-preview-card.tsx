@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AppImage } from "@/app/components/app-image";
 import type { LinkPreviewData } from "@/lib/link-preview";
 import { toPublicAbsoluteHref } from "@/lib/public-url";
 
@@ -99,10 +100,12 @@ export function LinkPreviewCard({
       {...(external && !preview ? { target: "_blank" as const, rel: "noopener noreferrer" } : {})}
     >
       {data.image ? (
-        <img
+        <AppImage
           src={data.image}
           alt=""
           className="link-preview-card-cover-img"
+          width={320}
+          height={180}
           loading="lazy"
         />
       ) : null}

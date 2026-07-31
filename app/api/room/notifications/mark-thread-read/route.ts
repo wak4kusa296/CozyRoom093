@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionOrRevokeIfGuestInactive } from "@/lib/auth";
-import { listAdminLetterEventsForGuest, normalizeThreadKey } from "@/lib/letters";
-import { markGuestNotificationRead } from "@/lib/guest-notification-reads";
+import { markAdminLetterNotificationsReadForGuestThread, normalizeThreadKey } from "@/lib/letters";
 import { pingRoomNotificationSubscriber } from "@/lib/notification-push";
 
 export const runtime = "nodejs";
@@ -19,12 +18,7 @@ export async function POST(request: Request) {
   }
 
   const slugKey = normalizeThreadKey(slug);
-  const rows = await listAdminLetterEventsForGuest(session.guestId);
-  for (const row of rows) {
-    if (row.slugKey === slugKey) {
-      await markGuestNotificationRead(session.guestId, row.id);
-    }
-  }
+  await markAdminLetterNotificationsReadForGuestThread(slugKey, session.guestId);
 
   pingRoomNotificationSubscriber(session.guestId);
   return NextResponse.json({ ok: true });

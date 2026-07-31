@@ -24,7 +24,10 @@ export function useFocusTrap(
    * 入力欄からフォーカスが外れる（モバイルではキーボードが閉じる）。
    */
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;

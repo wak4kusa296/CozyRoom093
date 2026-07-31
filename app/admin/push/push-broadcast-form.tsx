@@ -3,6 +3,7 @@
 import { readAdminJson } from "@/lib/admin-read-json";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, type FormEvent } from "react";
+import { AppImage } from "@/app/components/app-image";
 import { ArticleStylePushLink } from "@/app/components/article-style-push-link";
 import { RoomNotificationPanelPreview } from "./room-notification-panel-preview";
 import { formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
@@ -331,7 +332,7 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
             </div>
             {imgPv && showImgPv ? (
               <div className="room-push-upload-preview">
-                <img src={imgPv} alt="" className="room-push-upload-thumb" />
+                <AppImage src={imgPv} alt="" className="room-push-upload-thumb" width={320} height={180} />
               </div>
             ) : null}
           </div>
@@ -390,7 +391,7 @@ export function PushBroadcastForm({ guests }: { guests: PushFormGuestOption[] })
               <p className="room-notification-push-dialog-meta">{previewTime}</p>
               {showImgPv ? (
                 <div className="room-notification-push-dialog-image-wrap">
-                  <img src={imgPv} alt="" className="room-notification-push-dialog-image" />
+                  <AppImage src={imgPv} alt="" className="room-notification-push-dialog-image" width={1200} height={675} />
                 </div>
               ) : null}
               <div className="room-notification-push-dialog-body">{bodyPv}</div>

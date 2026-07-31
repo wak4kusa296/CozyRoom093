@@ -6,8 +6,14 @@ import {
   secretPhraseContainsWhitespace
 } from "@/lib/passphrase-rules";
 import { PHRASE_TAKEN_MESSAGE } from "@/lib/signup-email-template";
+import { getRequestClientIp, rateLimitHeaders, takeRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const limit = takeRateLimit(`phrase-check:${getRequestClientIp(request)}`, 30, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: rateLimitHeaders(limit.retryAfterSeconds) });
+  }
+
   const body = (await request.json()) as { phrase?: string };
   const phrase = String(body.phrase ?? "");
 
@@ -23,7 +29,13 @@ export async function POST(request: Request) {
     });
   }
 
-  const taken = await isActivePhraseTaken(phrase);
+  let taken: boolean;
+  try {
+    taken = await isActivePhraseTaken(phrase);
+  } catch (error) {
+    console.error("[join/check-phrase] lookup failed", error);
+    return NextResponse.json({ ok: false, error: "service_unavailable" }, { status: 503 });
+  }
   if (taken) {
     return NextResponse.json({
       ok: true,

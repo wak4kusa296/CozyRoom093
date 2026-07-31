@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminDeleteConfirmForm, useAdminDeleteConfirm } from "@/app/admin/admin-delete-confirm";
+import { AppImage } from "@/app/components/app-image";
 import { readAdminJson } from "@/lib/admin-read-json";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -262,7 +263,7 @@ export function MagazineCardList({
           >
             <div className="admin-magazine-card-thumb" aria-hidden="true">
               {magazine.thumbnail ? (
-                <img src={`/thumbnails/${magazine.thumbnail}`} alt="" />
+                <AppImage src={`/thumbnails/${magazine.thumbnail}`} alt="" fill sizes="320px" />
               ) : (
                 <span className="material-symbols-outlined">collections_bookmark</span>
               )}
@@ -298,7 +299,7 @@ export function MagazineCardList({
               <div className="admin-thumb-preview admin-thumb-preview-wrap" aria-busy={thumbUploading}>
                 <div className="admin-thumb-preview-fill">
                   {activeMagazine.thumbnail ? (
-                    <img src={`/thumbnails/${activeMagazine.thumbnail}`} alt="" />
+                    <AppImage src={`/thumbnails/${activeMagazine.thumbnail}`} alt="" fill sizes="320px" />
                   ) : (
                     <span className="meta">サムネイルなし</span>
                   )}

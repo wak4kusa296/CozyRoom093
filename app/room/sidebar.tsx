@@ -1,25 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import type { Ref } from "react";
 import { RoomBrand } from "@/app/components/room-brand";
 import { RoomPwaInstall } from "@/app/components/room-pwa-install";
 
 export function RoomSidebar({
   id,
+  sidebarRef,
   onNavigate,
-  secretPhrase,
   showAdminLink
 }: {
   id?: string;
+  sidebarRef?: Ref<HTMLElement>;
   /** モバイルドロワー: リンクを押したら閉じる */
   onNavigate?: () => void;
-  /** 台帳の秘密の言葉（ゲストのみ表示。未登録・管理者は null） */
-  secretPhrase?: string | null;
   /** 管理画面の秘密でログインしたときのみ true */
   showAdminLink?: boolean;
 }) {
   return (
     <aside
+      ref={sidebarRef}
       id={id}
       className="room-sidebar"
       aria-label="室内メニュー"
@@ -68,11 +69,6 @@ export function RoomSidebar({
       </nav>
 
       <div className="sidebar-bottom">
-        {secretPhrase ? (
-          <p className="sidebar-secret-phrase">
-            秘密の言葉：<strong>{secretPhrase}</strong>
-          </p>
-        ) : null}
         {showAdminLink ? (
           <Link href="/admin" className="sidebar-admin-link">
             <span className="material-symbols-outlined sidebar-admin-link-icon" aria-hidden="true">

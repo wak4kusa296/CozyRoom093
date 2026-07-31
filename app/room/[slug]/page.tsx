@@ -15,6 +15,7 @@ import { getLetters } from "@/lib/letters";
 import { pingRoomNotificationSubscriber } from "@/lib/notification-push";
 import { isPrivateArticleAccessAllowedByReferer } from "@/lib/private-article-referer";
 import { formatSiteDateTime } from "@/lib/site-datetime";
+import { getPublicSiteUrl } from "@/lib/public-url";
 import { ArticleBodyHtml } from "@/app/components/article-body-html";
 import { HeartButton } from "@/app/components/heart-button";
 import { MagazineBannerLink } from "@/app/components/magazine-banner-link";
@@ -22,7 +23,7 @@ import { HomeIcon } from "@/app/components/home-icon";
 import { LetterSection } from "./letter-section";
 
 function siteMetadataBase() {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const base = getPublicSiteUrl("http://localhost:3000")!;
   return new URL(`${base}/`);
 }
 

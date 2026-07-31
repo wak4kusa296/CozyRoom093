@@ -20,6 +20,14 @@ export function HomePageClient() {
   useFocusTrap(recoveryDialogRef, recoverModalOpen, closeRecoverModal);
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("reason") !== "session_expired") return;
+    setMessage("セッションの有効期限が切れました。もう一度、秘密の言葉を入力してください。");
+    url.searchParams.delete("reason");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  useEffect(() => {
     if (!recoverModalOpen) return;
     const prevBody = document.body.style.overflow;
     const prevHtml = document.documentElement.style.overflow;
@@ -33,6 +41,7 @@ export function HomePageClient() {
 
   async function enterRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (entering) return;
     setMessage(null);
     setEntering(true);
     try {
@@ -48,6 +57,8 @@ export function HomePageClient() {
       }
 
       setMessage("秘密の言葉が違うようです");
+    } catch {
+      setMessage("通信できませんでした。接続を確認して、もう一度お試しください。");
     } finally {
       setEntering(false);
     }
@@ -55,6 +66,7 @@ export function HomePageClient() {
 
   async function sendRecovery(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sending) return;
     setMessage(null);
     setSending(true);
 
@@ -75,6 +87,8 @@ export function HomePageClient() {
       }
 
       setMessage("まだ届けられませんでした。時間をおいてもう一度お試しください。");
+    } catch {
+      setMessage("通信できませんでした。接続を確認して、もう一度お試しください。");
     } finally {
       setSending(false);
     }
@@ -106,7 +120,9 @@ export function HomePageClient() {
             autoComplete="off"
             required
           />
-          <button type="submit">入室する</button>
+          <button type="submit" disabled={entering}>
+            {entering ? "入室中…" : "入室する"}
+          </button>
         </form>
 
         <nav className="landing-secondary-actions" aria-label="その他">

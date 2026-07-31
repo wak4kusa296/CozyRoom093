@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppImage } from "@/app/components/app-image";
 import { resolveContentThumbnail, type ContentMeta } from "@/lib/content-shared";
 import { formatSiteDateTime } from "@/lib/site-datetime";
 
@@ -108,7 +109,7 @@ export function BookshelfCarousel({
                     firstRegisteredMagazineThumbnail
                   );
                   return thumbFile
-                    ? <img src={`/thumbnails/${thumbFile}`} alt="" className="bookshelf-thumb-img" />
+                    ? <AppImage src={`/thumbnails/${thumbFile}`} alt="" className="bookshelf-thumb-img" width={320} height={180} />
                     : <span className="bookshelf-thumb-label">Preview</span>;
                 })()}
               </div>

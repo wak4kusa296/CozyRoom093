@@ -16,6 +16,7 @@ export type ContentMeta = {
   magazines: string[];
   tags: string[];
   thumbnail?: string;
+  description?: string;
   /** マークダウン本文から生成したプレーン文字列（検索用） */
   searchText?: string;
 };

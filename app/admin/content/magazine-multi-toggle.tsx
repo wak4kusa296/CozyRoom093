@@ -19,8 +19,6 @@ export function MagazineMultiToggle({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
 
-  useFocusTrap(dialogRef, open, () => closeModal(true));
-
   useEffect(() => {
     setSelected(normalizedInitial);
   }, [normalizedInitial]);
@@ -53,6 +51,8 @@ export function MagazineMultiToggle({
       form.requestSubmit();
     }
   }
+
+  useFocusTrap(dialogRef, open, () => closeModal(true));
 
   const triggerLabel = selected.length > 0 ? selected.join(" / ") : "未選択";
 

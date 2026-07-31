@@ -1,9 +1,9 @@
 import { AdminNav } from "@/app/admin/_nav";
 import { requireAdminSession } from "@/app/admin/_auth";
-import { AdminLettersReplyForm } from "@/app/admin/letters/admin-letters-reply-form";
+import { AdminLettersComposeForm } from "@/app/admin/letters/admin-letters-compose-form";
+import { AdminLetterThreadModal } from "@/app/admin/letters/admin-letter-thread-modal";
 import { listContents } from "@/lib/content";
-import { getLetters, listLetterThreads, markAllGuestLetterNotificationReadsForAdminThread, normalizeThreadKey } from "@/lib/letters";
-import { pingAdminNotificationSubscribers } from "@/lib/notification-push";
+import { listLetterThreads, normalizeThreadKey } from "@/lib/letters";
 import { listGuestCredentialsWithStatus } from "@/lib/guest-credentials";
 import Link from "next/link";
 
@@ -45,14 +45,10 @@ export default async function AdminLettersPage({
     ? (nameByGuestKey.get(selectedThread.guestKey) ?? selectedThread.guestKey)
     : "";
   const selectedTitle = selectedThread ? (titleBySlugKey.get(selectedThread.slugKey) ?? selectedThread.slugKey) : "";
-  const selectedLetters =
-    selectedThread && selectedSlug && selectedGuestId ? await getLetters(selectedSlug, selectedGuestId) : [];
   const closeHref = slugFilter ? `/admin/letters?slug=${encodeURIComponent(slugFilter)}` : "/admin/letters";
-
-  if (normalizedSlugFilter && normalizedGuestFilter) {
-    await markAllGuestLetterNotificationReadsForAdminThread(normalizedSlugFilter, normalizedGuestFilter);
-    pingAdminNotificationSubscribers();
-  }
+  const composeGuests = guests
+    .filter((guest) => guest.isActive)
+    .map((guest) => ({ guestId: guest.guestId, guestName: guest.guestName }));
 
   return (
     <main className="landing admin-page-wrap">
@@ -62,6 +58,10 @@ export default async function AdminLettersPage({
           <p className="lead">各スレッドの最新状況を確認できます。</p>
         </div>
         <AdminNav />
+        <section className="admin-letters-compose-section" aria-labelledby="admin-letters-compose-heading">
+          <h2 id="admin-letters-compose-heading">新しいお手紙</h2>
+          <AdminLettersComposeForm guests={composeGuests} />
+        </section>
 
         {filteredThreads.length === 0 ? (
           <p className="meta">まだ文通スレッドはありません。</p>
@@ -78,7 +78,7 @@ export default async function AdminLettersPage({
                   const contentTitle = titleBySlugKey.get(thread.slugKey) ?? thread.slugKey;
                   const contentSlug = slugBySlugKey.get(thread.slugKey) ?? thread.slugKey;
                   const displayName = nameByGuestKey.get(thread.guestKey) ?? thread.guestKey;
-                  const isConfirmed = thread.latestSender === "管理者";
+                  const isConfirmed = thread.latestSenderRole === "admin";
 
                   return (
                     <tr key={`${thread.slugKey}__${thread.guestKey}`}>
@@ -103,47 +103,17 @@ export default async function AdminLettersPage({
         )}
 
         {selectedThread ? (
-          <div className="letter-modal-backdrop">
-            <section className="letters letter-modal" role="dialog" aria-modal="true" aria-label="文通欄">
-              <div className="letter-modal-header">
-                <div className="admin-letter-modal-title-block">
-                  <h2>
-                    {selectedTitle} / {selectedDisplayName}
-                  </h2>
-                  <Link
-                    href={`/room/${encodeURIComponent(selectedSlug)}?guest=${encodeURIComponent(selectedGuestId)}`}
-                    className="text-link admin-letter-open-article"
-                  >
-                    記事ページへ
-                  </Link>
-                </div>
-                <div className="admin-letter-modal-actions">
-                  <Link href={closeHref} className="ghost letter-close-button" aria-label="閉じる">
-                    close
-                  </Link>
-                </div>
-              </div>
-              <p className="meta">このやり取りは {selectedDisplayName} と管理者だけに見えます。</p>
-              <div className="thread">
-                {selectedLetters.length === 0 ? <p className="meta">まだ便りはありません。</p> : null}
-                {selectedLetters.map((letter, index) => {
-                  const normalizedSender = letter.sender.trim().toLowerCase();
-                  const isAdmin = normalizedSender === "管理者" || normalizedSender === "admin";
-                  return (
-                    <article key={`${letter.createdAt}-${index}`} className={`letter-item ${isAdmin ? "is-admin" : "is-you"}`}>
-                      <p className="sender">{isAdmin ? "管理者" : selectedDisplayName}</p>
-                      <p>{letter.body}</p>
-                    </article>
-                  );
-                })}
-              </div>
-              <AdminLettersReplyForm>
-                <input type="hidden" name="slug" value={selectedSlug} />
-                <input type="hidden" name="guestId" value={selectedGuestId} />
-                <textarea name="body" rows={4} placeholder={`${selectedDisplayName}への返信`} required />
-              </AdminLettersReplyForm>
-            </section>
-          </div>
+          <AdminLetterThreadModal
+            slug={selectedSlug}
+            slugKey={selectedThread.slugKey}
+            guestId={selectedGuestId}
+            guestKey={selectedThread.guestKey}
+            threadTitle={`${selectedTitle} / ${selectedDisplayName}`}
+            counterpartName={selectedDisplayName}
+            articleHref={`/room/${encodeURIComponent(selectedSlug)}?guest=${encodeURIComponent(selectedGuestId)}`}
+            articleLinkLabel="記事ページへ"
+            closeHref={closeHref}
+          />
         ) : null}
       </section>
     </main>

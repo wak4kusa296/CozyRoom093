@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { isPostgresMarkdownStore } from "@/lib/content-fs-env";
+import { isFilesystemContentStore, isPostgresAssetStore } from "@/lib/content-store";
 import { dbGetThumbnailBlob } from "@/lib/thumbnail-blobs-db";
 
 export const runtime = "nodejs";
@@ -14,35 +14,43 @@ function mimeFromName(name: string): string {
 }
 
 function isSafeFilename(filename: string): boolean {
-  if (!filename || filename.length > 512) return false;
-  if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) return false;
-  return true;
+  return (
+    /^[\p{L}\p{N}_.-]{1,160}\.(?:jpe?g|png|gif|webp)$/iu.test(filename) &&
+    !filename.includes("..") &&
+    !filename.includes("/") &&
+    !filename.includes("\\") &&
+    !filename.includes("\0")
+  );
 }
 
-/** Git 同梱の public/thumbnails が無い場合（DB のみ）はここから配信 */
+/** PostgreSQL-backed thumbnails; disk reads are development-only. */
 export async function GET(_request: Request, context: { params: Promise<{ filename: string }> }) {
   const { filename } = await context.params;
   if (!isSafeFilename(filename)) {
     return new Response("Not Found", { status: 404 });
   }
 
-  if (isPostgresMarkdownStore()) {
+  if (isPostgresAssetStore()) {
     const row = await dbGetThumbnailBlob(filename);
     if (row) {
       return new Response(new Uint8Array(row.data), {
         headers: {
           "Content-Type": row.contentType,
+          "X-Content-Type-Options": "nosniff",
           "Cache-Control": "public, max-age=31536000, immutable"
         }
       });
     }
+    return new Response("Not Found", { status: 404 });
   }
 
+  if (!isFilesystemContentStore()) return new Response("Not Found", { status: 404 });
   try {
     const buf = await readFile(path.join(process.cwd(), "public", "thumbnails", filename));
     return new Response(new Uint8Array(buf), {
       headers: {
         "Content-Type": mimeFromName(filename),
+          "X-Content-Type-Options": "nosniff",
         "Cache-Control": "public, max-age=31536000, immutable"
       }
     });

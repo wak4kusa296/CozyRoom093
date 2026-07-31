@@ -1,8 +1,14 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 
 type ServerAction = (formData: FormData) => Promise<void>;
+
+function SaveStatus() {
+  const { pending } = useFormStatus();
+  return pending ? <span className="sr-only" role="status">保存中…</span> : null;
+}
 
 export function AdminLedgerInlineEditForm({
   action,
@@ -31,6 +37,7 @@ export function AdminLedgerInlineEditForm({
       }}
     >
       {children}
+      <SaveStatus />
     </form>
   );
 }

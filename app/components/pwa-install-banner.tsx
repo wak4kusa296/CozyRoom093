@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AppImage } from "@/app/components/app-image";
 
 const STORAGE_KEY = "pwa-install-banner-dismissed";
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -58,9 +59,11 @@ export function PwaInstallBanner() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (suppressOnJoin) {
-      setOpen(false);
-      setMode(null);
-      setDeferred(null);
+      queueMicrotask(() => {
+        setOpen(false);
+        setMode(null);
+        setDeferred(null);
+      });
       return;
     }
     if (isStandalone()) return;
@@ -123,7 +126,7 @@ export function PwaInstallBanner() {
     <div className="pwa-install-banner" role="dialog" aria-label="ホーム画面への追加">
       <div className="pwa-install-banner-inner">
         <div className="pwa-install-banner-head">
-          <img
+          <AppImage
             className="pwa-install-banner-app-icon"
             src="/icon-192.png"
             alt=""

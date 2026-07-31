@@ -16,15 +16,11 @@ export function RecoveryGuestPicker(props: {
   onChange: (guestId: string) => void;
 }) {
   const { rowId, options, value, onChange } = props;
-  const [mounted, setMounted] = useState(false);
+  const [mounted] = useState(() => typeof document !== "undefined");
   const [menuOpen, setMenuOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const selected = options.find((o) => o.guestId === value);
   const displayText = value && selected ? labelFor(selected) : "選択";

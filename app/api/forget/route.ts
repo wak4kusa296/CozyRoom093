@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { appendRecoveryRequest } from "@/lib/recovery-requests";
 import { pingAdminNotificationSubscribers } from "@/lib/notification-push";
 import { sendWebPushToAdminSubscribers } from "@/lib/web-push-deliver";
+import { getRequestClientIp, rateLimitHeaders, takeRateLimit } from "@/lib/rate-limit";
 
 function isValidEmail(value: string) {
   const v = value.trim();
@@ -10,6 +11,11 @@ function isValidEmail(value: string) {
 }
 
 export async function POST(request: Request) {
+  const limit = takeRateLimit(`recovery:${getRequestClientIp(request)}`, 5, 60 * 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: rateLimitHeaders(limit.retryAfterSeconds) });
+  }
+
   const body = (await request.json()) as { hintName?: string; hintPlace?: string; contactEmail?: string };
 
   if (!body.hintName?.trim() || !body.hintPlace?.trim()) {

@@ -3,7 +3,20 @@
 ## セットアップ
 1. `npm install`
 2. `.env.example` を `.env.local` にコピーして値を設定
-3. `npm run dev`
+3. `npm run db:migrate`
+4. `npm run dev`
+
+## コンテンツとアップロードの保存先
+
+記事 Markdown、サムネイル、プッシュ通知画像は PostgreSQL が唯一の実行時保存先です。`content/` と `public/thumbnails/`、`public/uploads/push/` はローカル開発用の初期データ・移行元としてのみ扱い、本番のデータ源にはしません。
+
+既存の `content/*.md` を初回移行するには、マイグレーション後に実行します。
+
+```sh
+npm run db:import-content
+```
+
+同名 slug を明示的に上書きする場合だけ `npm run db:import-content -- --replace` を使います。ローカルでファイルを検証・編集する一時用途には `CONTENT_STORE=filesystem` を設定できますが、本番環境では拒否されます。
 
 ## 開発環境を本番DBのコピーに接続する（Neon ブランチ）
 
@@ -50,5 +63,4 @@
 ## 備考
 - `GUEST_PASSPHRASES` は `name:phrase` をカンマ区切りで設定します。
 - 管理画面の「ユーザー管理」では、ユーザー追加・合言葉変更・有効/無効の切替に加え、`/join` 用の手書きのパスワードを管理できます。
-- 往復書簡と復元リクエストは `data/` に JSON 保存されます（初期実装）。
-- 本番運用時は Supabase/PlanetScale 等に移行してください。
+- アプリケーションの永続データは PostgreSQL に保存します。

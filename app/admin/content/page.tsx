@@ -1,6 +1,6 @@
 import { AdminNav } from "@/app/admin/_nav";
 import { requireAdminSession } from "@/app/admin/_auth";
-import { assertContentMarkdownWritable, isContentMarkdownPersistable } from "@/lib/content-fs-env";
+import { assertContentWritable } from "@/lib/content-store";
 import {
   createMarkdownUpload,
   deleteStoredMarkdown,
@@ -21,6 +21,7 @@ import { redirect } from "next/navigation";
 import { ContentDetailModal } from "@/app/admin/content/content-detail-modal";
 import { listLetterThreads, normalizeThreadKey } from "@/lib/letters";
 import { formatSiteDateTime, formatSiteDateTimeWithSeconds } from "@/lib/site-datetime";
+import { getPublicSiteUrl } from "@/lib/public-url";
 
 function formatMdFileName(slug: string) {
   return slug.endsWith(".md") ? slug : `${slug}.md`;
@@ -41,7 +42,7 @@ async function uploadContentAction(formData: FormData) {
   "use server";
 
   await requireAdminSession();
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const file = formData.get("contentFile");
   if (!(file instanceof File) || file.size === 0) return;
   if (!file.name.toLowerCase().endsWith(".md")) return;
@@ -95,7 +96,7 @@ async function deleteContentAction(formData: FormData) {
   "use server";
 
   await requireAdminSession();
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const slug = String(formData.get("slug") ?? "").trim();
   if (!slug) return;
 
@@ -122,7 +123,7 @@ async function replaceContentFileAction(formData: FormData) {
   "use server";
 
   await requireAdminSession();
-  assertContentMarkdownWritable();
+  assertContentWritable();
   const slug = String(formData.get("slug") ?? "").trim();
   const file = formData.get("contentFile");
   if (!slug) return;
@@ -192,7 +193,7 @@ export default async function AdminContentPage() {
   const allMagazineOptions = Array.from(
     new Set([...magazines.map((item) => item.name), ...items.flatMap((item) => item.magazines)])
   ).sort((a, b) => a.localeCompare(b, "ja"));
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const siteUrl = getPublicSiteUrl() ?? "";
 
   return (
     <main className="landing admin-page-wrap">
@@ -201,13 +202,6 @@ export default async function AdminContentPage() {
           <h1>記事管理</h1>
           <p className="lead">各記事の公開状態、マガジンへの登録、反応数、Markdown を確認・更新できます。</p>
         </div>
-        {!isContentMarkdownPersistable() ? (
-          <p className="message" role="status">
-            記事の保存先がありません。Vercel 本番では環境変数{" "}
-            <code>CONTENT_MARKDOWN_STORE=postgres</code>（DB マイグレーション 005 適用済み）を設定するか、リポジトリの{" "}
-            <code>content/</code> を Git からデプロイするか、ディスク書き込み可能なサーバーでホストしてください。
-          </p>
-        ) : null}
         <AdminNav />
         <ContentUploadModal action={uploadContentAction} />
         {magazines.length === 0 ? (

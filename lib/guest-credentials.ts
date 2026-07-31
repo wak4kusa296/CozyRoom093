@@ -1,17 +1,17 @@
 import { getDbPool } from "@/lib/db";
 import type { Guest } from "@/lib/auth";
+import { hashSecret, verifySecret } from "@/lib/secret-hash";
 
 export type GuestCredential = {
   guestId: string;
   guestName: string;
-  phrase: string;
   isActive: boolean;
   /** 管理人だけが見るメモ。ゲスト向け画面・APIには出さない */
   adminMemo: string;
 };
 
 export function parseGuestCredentialsEnv() {
-  const raw = process.env.GUEST_PASSPHRASES ?? "guest1:morningdew";
+  const raw = process.env.GUEST_PASSPHRASES ?? "";
   return raw
     .split(",")
     .map((entry) => entry.trim())
@@ -23,10 +23,8 @@ export function parseGuestCredentialsEnv() {
       return {
         guestId: guestName,
         guestName,
-        phrase: guestPhrase,
-        isActive: true,
-        adminMemo: ""
-      } satisfies GuestCredential;
+        phrase: guestPhrase
+      };
     })
     .filter((item) => item.phrase.length > 0);
 }
@@ -63,11 +61,10 @@ export async function listGuestCredentialsWithStatus() {
   const result = await pool.query<{
     guest_id: string;
     guest_name: string;
-    phrase: string;
     is_active: boolean;
     admin_memo: string | null;
   }>(`
-    SELECT guest_id, guest_name, phrase, is_active, admin_memo
+    SELECT guest_id, guest_name, is_active, admin_memo
     FROM guest_credentials
     ORDER BY guest_id ASC
   `);
@@ -75,7 +72,6 @@ export async function listGuestCredentialsWithStatus() {
   return result.rows.map((row) => ({
     guestId: row.guest_id,
     guestName: row.guest_name,
-    phrase: row.phrase,
     isActive: row.is_active,
     adminMemo: row.admin_memo ?? ""
   }));
@@ -97,11 +93,11 @@ export async function syncGuestCredentialsFromEnv() {
 
       await client.query(
         `
-        INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
+        INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active)
         VALUES ($1, $2, $3, TRUE)
         ON CONFLICT (guest_id) DO NOTHING
         `,
-        [item.guestId, item.guestName, item.phrase]
+        [item.guestId, item.guestName, await hashSecret(item.phrase)]
       );
     }
     await client.query("COMMIT");
@@ -111,25 +107,6 @@ export async function syncGuestCredentialsFromEnv() {
   } finally {
     client.release();
   }
-}
-
-/** 台帳の guest_id で秘密の言葉を取得（再発行メール送信用。呼び名ヒントとは無関係） */
-export async function getPassphraseByGuestId(guestIdInput: string): Promise<string | null> {
-  const guestId = guestIdInput.trim();
-  if (!guestId) return null;
-
-  const pool = getDbPool();
-  const result = await pool.query<{ phrase: string }>(
-    `
-    SELECT phrase
-    FROM guest_credentials
-    WHERE is_active = TRUE AND guest_id = $1
-    LIMIT 1
-    `,
-    [guestId]
-  );
-
-  return result.rows[0]?.phrase ?? null;
 }
 
 export async function isGuestCredentialActive(guestIdInput: string): Promise<boolean> {
@@ -144,17 +121,9 @@ export async function isGuestCredentialActive(guestIdInput: string): Promise<boo
     const row = result.rows[0];
     if (row) return row.is_active;
 
-    // 台帳に行がない = 削除済み、または env からまだ INSERT されていないだけ
-    const suppressed = await pool.query(`SELECT 1 FROM guest_env_sync_suppress WHERE guest_id = $1 LIMIT 1`, [id]);
-    if (suppressed.rowCount) return false;
-
-    const envGuest = parseGuestCredentialsEnv().find((g) => g.guestId === id);
-    return !!envGuest && envGuest.isActive;
+    return false;
   } catch {
-    // DB 利用不可時は env に載っている ID のみ継続を認める（従来の緩和）
-    const envGuest = parseGuestCredentialsEnv().find((g) => g.guestId === id);
-    if (envGuest) return envGuest.isActive;
-    return true;
+    return false;
   }
 }
 
@@ -185,25 +154,21 @@ export async function findGuestByPhrase(phraseInput: string): Promise<Guest | nu
   const result = await pool.query<{
     guest_id: string;
     guest_name: string;
-    phrase: string;
+    credential_hash: string;
   }>(
     `
-    SELECT guest_id, guest_name, phrase
+    SELECT guest_id, guest_name, credential_hash
     FROM guest_credentials
-    WHERE phrase = $1 AND is_active = TRUE
-    LIMIT 1
-    `,
-    [phrase]
+    WHERE is_active = TRUE
+    `
   );
 
-  const row = result.rows[0];
-  if (!row) return null;
-
-  return {
-    id: row.guest_id,
-    name: row.guest_name,
-    phrase: row.phrase
-  };
+  for (const row of result.rows) {
+    if (await verifySecret(phrase, row.credential_hash)) {
+      return { id: row.guest_id, name: row.guest_name };
+    }
+  }
+  return null;
 }
 
 /**
@@ -222,14 +187,16 @@ export async function insertGuestCredential(input: {
   const adminMemo = (input.adminMemo ?? "").trim();
   if (!guestId || !guestName || !phrase) return "phrase_taken";
 
+  if (await isActivePhraseTaken(phrase)) return "phrase_taken";
+
   const pool = getDbPool();
   try {
     await pool.query(
       `
-      INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active, admin_memo)
+      INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active, admin_memo)
       VALUES ($1, $2, $3, TRUE, $4)
       `,
-      [guestId, guestName, phrase, adminMemo]
+      [guestId, guestName, await hashSecret(phrase), adminMemo]
     );
     return "ok";
   } catch (e: unknown) {
@@ -255,32 +222,33 @@ export async function upsertGuestCredential(input: {
   const pool = getDbPool();
   await pool.query(
     `
-    INSERT INTO guest_credentials (guest_id, guest_name, phrase, is_active)
+    INSERT INTO guest_credentials (guest_id, guest_name, credential_hash, is_active)
     VALUES ($1, $2, $3, TRUE)
     ON CONFLICT (guest_id)
     DO UPDATE SET
       guest_name = EXCLUDED.guest_name,
-      phrase = EXCLUDED.phrase,
+      credential_hash = EXCLUDED.credential_hash,
       updated_at = NOW()
     `,
-    [guestId, guestName, phrase]
+    [guestId, guestName, await hashSecret(phrase)]
   );
 }
 
-export async function updateGuestPhrase(guestIdInput: string, phraseInput: string) {
+export async function updateGuestPhrase(guestIdInput: string, phraseInput: string): Promise<boolean> {
   const guestId = guestIdInput.trim();
   const phrase = phraseInput.trim();
-  if (!guestId || !phrase) return;
+  if (!guestId || !phrase) return false;
 
   const pool = getDbPool();
-  await pool.query(
+  const result = await pool.query(
     `
     UPDATE guest_credentials
-    SET phrase = $2, updated_at = NOW()
+    SET credential_hash = $2, updated_at = NOW()
     WHERE guest_id = $1
     `,
-    [guestId, phrase]
+    [guestId, await hashSecret(phrase)]
   );
+  return Boolean(result.rowCount);
 }
 
 export async function updateGuestName(guestIdInput: string, guestNameInput: string) {

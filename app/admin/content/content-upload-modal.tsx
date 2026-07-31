@@ -33,7 +33,7 @@ export function ContentUploadModal({
         <div className="admin-magazine-modal-backdrop" onClick={() => setOpen(false)}>
           <section
             ref={dialogRef}
-            className="admin-upload-modal"
+            className="admin-upload-modal ui-modal"
             role="dialog"
             aria-modal="true"
             aria-label="記事アップロード"
@@ -62,7 +62,7 @@ export function ContentUploadModal({
                   onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
                 />
               </label>
-              <button type="submit" className="admin-add-button">
+              <button type="submit" className="admin-add-button ui-button ui-button--primary">
                 アップロードする
               </button>
             </form>

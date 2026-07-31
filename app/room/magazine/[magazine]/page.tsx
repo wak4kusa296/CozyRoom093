@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { AppImage } from "@/app/components/app-image";
 import { HomeIcon } from "@/app/components/home-icon";
 import { getSession } from "@/lib/auth";
 import { listContents, listPublicContents, normalizeSlugParam } from "@/lib/content";
@@ -29,9 +30,11 @@ export default async function MagazinePage({
   for (const mag of magazines) {
     if (mag.thumbnail) magazineThumbnails[mag.name] = mag.thumbnail;
   }
+  const magMeta = magazines.find((m) => m.name === resolvedMagazine);
+  if (!magMeta) notFound();
+
   const matched = items.filter((item) => item.magazines.includes(resolvedMagazine));
   const orderedItems = sortItemsByMagazineOrder(matched, orders[resolvedMagazine] ?? []);
-  const magMeta = magazines.find((m) => m.name === resolvedMagazine);
 
   return (
     <main className="room">
@@ -49,10 +52,12 @@ export default async function MagazinePage({
             aria-hidden={magMeta?.thumbnail ? undefined : true}
           >
             {magMeta?.thumbnail ? (
-              <img
+              <AppImage
                 src={`/thumbnails/${magMeta.thumbnail}`}
                 alt=""
                 className="magazine-page-hero-img"
+                width={1600}
+                height={900}
               />
             ) : null}
           </div>

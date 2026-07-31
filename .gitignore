@@ -3,7 +3,7 @@ node_modules
 out
 .env*
 !.env.example
-data/*.json
+data/**/*.json
 !data/.gitkeep
 npm-debug.log*
 .vercel

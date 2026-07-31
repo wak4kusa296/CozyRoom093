@@ -24,6 +24,8 @@ export function RoomPushNotifyBanner({
   /** localStorage のキー（ルームと管理で別々に「あとで」を保存する） */
   dismissStorageKey?: string;
 }) {
+  const isPushSupported =
+    typeof window !== "undefined" && "Notification" in window && "PushManager" in window;
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -34,60 +36,65 @@ export function RoomPushNotifyBanner({
   });
 
   const [phase, setPhase] = useState<
-    "init" | "no-vapid" | "hidden" | "prompt" | "subscribed" | "denied"
+    "init" | "no-vapid" | "hidden" | "prompt" | "subscribed" | "denied" | "error"
   >("init");
+  const [enabling, setEnabling] = useState(false);
 
   useEffect(() => {
     if (!enabled || dismissed) return;
-    if (typeof window === "undefined" || !("Notification" in window) || !("PushManager" in window)) {
-      setPhase("hidden");
-      return;
-    }
+    if (!isPushSupported) return;
 
     let cancelled = false;
     void (async () => {
-      const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
-      const data = (await res.json()) as { vapidPublicKey?: string | null };
-      if (cancelled) return;
-      if (!data.vapidPublicKey) {
-        setPhase("no-vapid");
-        return;
+      try {
+        const res = await fetch("/api/room/push-subscribe", { cache: "no-store" });
+        const data = (await res.json()) as { vapidPublicKey?: string | null };
+        if (cancelled) return;
+        if (!res.ok || !data.vapidPublicKey) {
+          setPhase("no-vapid");
+          return;
+        }
+        const reg = await navigator.serviceWorker.register("/sw.js");
+        const sub = await reg.pushManager.getSubscription();
+        if (Notification.permission === "denied") {
+          setPhase("denied");
+          return;
+        }
+        if (sub && Notification.permission === "granted") {
+          const postRes = await fetch("/api/room/push-subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sub.toJSON())
+          });
+          redirectHomeIfUnauthorized(postRes.status);
+          setPhase(postRes.ok ? "subscribed" : "error");
+          return;
+        }
+        setPhase("prompt");
+      } catch {
+        if (!cancelled) setPhase("error");
       }
-
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      const sub = await reg.pushManager.getSubscription();
-      const perm = Notification.permission;
-
-      if (perm === "denied") {
-        setPhase("denied");
-        return;
-      }
-
-      if (sub && perm === "granted") {
-        const postRes = await fetch("/api/room/push-subscribe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sub.toJSON())
-        });
-        redirectHomeIfUnauthorized(postRes.status);
-        if (!postRes.ok) return;
-        setPhase("subscribed");
-        return;
-      }
-
-      setPhase("prompt");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [enabled, dismissed, dismissStorageKey]);
+  }, [enabled, dismissed, dismissStorageKey, isPushSupported]);
 
   const onEnable = useCallback(async () => {
-    const result = await subscribeRoomPush();
-    if (result === "granted") setPhase("subscribed");
-    else if (result === "denied") setPhase("denied");
-  }, []);
+    if (enabling) return;
+    setEnabling(true);
+    try {
+      const result = await subscribeRoomPush();
+      if (result === "granted") setPhase("subscribed");
+      else if (result === "denied") setPhase("denied");
+      else setPhase("error");
+    } catch {
+      setPhase("error");
+    } finally {
+      setEnabling(false);
+    }
+  }, [enabling]);
 
   const onDismiss = useCallback(() => {
     try {
@@ -99,7 +106,7 @@ export function RoomPushNotifyBanner({
     setPhase("hidden");
   }, [dismissStorageKey]);
 
-  if (!enabled || phase === "init" || phase === "no-vapid" || phase === "hidden" || dismissed) {
+  if (!enabled || !isPushSupported || phase === "init" || phase === "no-vapid" || phase === "hidden" || dismissed) {
     return null;
   }
   if (phase === "subscribed") {
@@ -118,13 +125,25 @@ export function RoomPushNotifyBanner({
       </div>
     );
   }
+  if (phase === "error") {
+    return (
+      <div className="room-push-notify-banner room-push-notify-banner--denied" role="status">
+        <p className="room-push-notify-banner-text">
+          通知の設定を確認できませんでした。接続を確認して、ページを再読み込みしてください。
+        </p>
+        <button type="button" className="room-push-notify-banner-close" onClick={onDismiss} aria-label="閉じる">
+          ×
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="room-push-notify-banner" role="region" aria-label="ブラウザ通知">
       <p className="room-push-notify-banner-text">{description}</p>
       <div className="room-push-notify-banner-actions">
-        <button type="button" className="room-push-notify-banner-primary" onClick={() => void onEnable()}>
-          通知を許可する
+        <button type="button" className="room-push-notify-banner-primary" onClick={() => void onEnable()} disabled={enabling}>
+          {enabling ? "設定中…" : "通知を許可する"}
         </button>
         <button type="button" className="room-push-notify-banner-secondary" onClick={onDismiss}>
           あとで

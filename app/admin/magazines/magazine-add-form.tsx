@@ -3,6 +3,7 @@
 import { readAdminJson } from "@/lib/admin-read-json";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
+import { AppImage } from "@/app/components/app-image";
 
 type AddResult = { ok: true; id: string } | { ok: false };
 
@@ -112,7 +113,7 @@ export function MagazineAddForm({ addMagazineAction, updateMagazineThumbnailActi
         <div className="admin-thumb-preview admin-thumb-preview-add admin-thumb-preview-wrap" aria-busy={busy}>
           <div className="admin-thumb-preview-fill">
             {thumbPreviewUrl ? (
-              <img src={thumbPreviewUrl} alt="" className="admin-magazine-add-thumb-preview-img" />
+              <AppImage src={thumbPreviewUrl} alt="" className="admin-magazine-add-thumb-preview-img" fill />
             ) : (
               <span className="meta">サムネイル（任意）</span>
             )}

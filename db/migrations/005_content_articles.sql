@@ -1,4 +1,4 @@
--- 記事 Markdown を PostgreSQL に保持（Vercel 等の読み取り専用 FS 向け）。Git の content/*.md と併用可（同一 slug は DB が優先）。
+-- 記事 Markdown の唯一の実行時保存先。content/*.md は開発時のインポート元としてのみ使用する。
 
 CREATE TABLE IF NOT EXISTS content_articles (
   slug TEXT PRIMARY KEY,

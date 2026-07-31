@@ -89,7 +89,7 @@ export function JoinPageClient() {
         setPhraseError(null);
       }
     } catch {
-      // 重複チェック失敗時は空白エラー以外は残さない
+      setFormError("秘密の言葉を確認できませんでした。接続を確認して、もう一度お試しください。");
     } finally {
       setCheckingPhrase(false);
     }
@@ -97,6 +97,7 @@ export function JoinPageClient() {
 
   async function onVerifyGate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (checkingGate) return;
     setFormError(null);
 
     if (!validateGatePhrase(gatePhrase)) {
@@ -141,6 +142,8 @@ export function JoinPageClient() {
       setGateUnlocked(true);
       setGateError(null);
       setFormError(null);
+    } catch {
+      setFormError("通信できませんでした。接続を確認して、もう一度お試しください。");
     } finally {
       setCheckingGate(false);
     }
@@ -148,6 +151,7 @@ export function JoinPageClient() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting || checkingGate) return;
     setFormError(null);
 
     if (!gateUnlocked) {
@@ -232,6 +236,8 @@ export function JoinPageClient() {
         emailSent: Boolean(data.emailSent)
       });
       setContactEmail("");
+    } catch {
+      setFormError("通信できませんでした。接続を確認して、もう一度お試しください。");
     } finally {
       setSubmitting(false);
     }

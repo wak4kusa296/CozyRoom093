@@ -1,29 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RoomBrand, RoomLogo } from "@/app/components/room-brand";
 import { RoomPushNotifyBanner } from "@/app/components/room-push-notify-banner";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import { RoomNotificationBell } from "./room-notification-bell";
 import { RoomSidebar } from "./sidebar";
 
 export function RoomShellClient({
   children,
-  sidebarSecretPhrase,
   showPushNotifyBanner,
   showAdminSidebarLink
 }: {
   children: React.ReactNode;
-  /** ログイン中ゲストの台帳にある秘密の言葉（未登録なら null） */
-  sidebarSecretPhrase?: string | null;
   /** ブラウザ通知バナーを出す（未ログインなら false） */
   showPushNotifyBanner?: boolean;
   /** 管理画面の秘密でログインしたセッションのみ true（サイドバーの管理人導線） */
   showAdminSidebarLink?: boolean;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   const closeNav = useCallback(() => setNavOpen(false), []);
   const toggleNav = useCallback(() => setNavOpen((o) => !o), []);
+  useFocusTrap(sidebarRef, navOpen, closeNav);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
@@ -48,15 +48,6 @@ export function RoomShellClient({
       document.body.style.overflow = "";
     };
   }, [navOpen]);
-
-  useEffect(() => {
-    if (!navOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closeNav();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [navOpen, closeNav]);
 
   return (
     <div className={navOpen ? "room-shell room-shell--nav-open" : "room-shell"}>
@@ -85,8 +76,8 @@ export function RoomShellClient({
       </div>
       <RoomSidebar
         id="room-sidebar-nav"
+        sidebarRef={sidebarRef}
         onNavigate={closeNav}
-        secretPhrase={sidebarSecretPhrase ?? null}
         showAdminLink={showAdminSidebarLink ?? false}
       />
       <div className="room-main">
@@ -94,11 +85,6 @@ export function RoomShellClient({
         <footer className="room-site-footer" aria-label="サイト情報">
           <RoomBrand variant="sidebar" />
           <div className="sidebar-bottom">
-            {sidebarSecretPhrase ? (
-              <p className="sidebar-secret-phrase">
-                秘密の言葉：<strong>{sidebarSecretPhrase}</strong>
-              </p>
-            ) : null}
             <form action="/api/logout" method="post" className="sidebar-logout-form">
               <button type="submit" className="sidebar-admin-link sidebar-logout-button">
                 <span className="material-symbols-outlined sidebar-admin-link-icon" aria-hidden="true">

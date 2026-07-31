@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppImage } from "@/app/components/app-image";
 
 type MagazineBannerLinkProps = {
   magazineName: string;
@@ -31,7 +32,7 @@ export function MagazineBannerLink({
       </span>
       {thumbnail ? (
         <span className="article-magazine-banner-media" aria-hidden="true">
-          <img
+          <AppImage
             className="article-magazine-banner-thumb-img"
             src={`/thumbnails/${thumbnail}`}
             alt=""

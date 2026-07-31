@@ -5,7 +5,6 @@ import {
   FormEvent,
   ReactNode,
   useCallback,
-  useEffect,
   useRef,
   useState,
   type ComponentProps
@@ -32,11 +31,7 @@ export function AdminDeleteConfirmDialog({
   onConfirm
 }: AdminDeleteConfirmDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [mounted] = useState(() => typeof document !== "undefined");
 
   useFocusTrap(dialogRef, open, onCancel);
 
