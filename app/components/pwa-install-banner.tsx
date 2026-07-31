@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "pwa-install-banner-dismissed";
@@ -37,6 +38,8 @@ function isDismissedRecently(): boolean {
 }
 
 export function PwaInstallBanner() {
+  const pathname = usePathname();
+  const suppressOnJoin = pathname === "/join";
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"ios" | "chrome" | null>(null);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEventLike | null>(null);
@@ -54,6 +57,12 @@ export function PwaInstallBanner() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (suppressOnJoin) {
+      setOpen(false);
+      setMode(null);
+      setDeferred(null);
+      return;
+    }
     if (isStandalone()) return;
     if (isDismissedRecently()) return;
 
@@ -93,7 +102,7 @@ export function PwaInstallBanner() {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+  }, [suppressOnJoin]);
 
   const onInstallClick = useCallback(async () => {
     if (!deferred) return;
@@ -108,7 +117,7 @@ export function PwaInstallBanner() {
     setMode(null);
   }, [deferred]);
 
-  if (!open || !mode) return null;
+  if (suppressOnJoin || !open || !mode) return null;
 
   return (
     <div className="pwa-install-banner" role="dialog" aria-label="ホーム画面への追加">

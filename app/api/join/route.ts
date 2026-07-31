@@ -122,7 +122,7 @@ export async function POST(request: Request) {
     await sendWebPushToAdminSubscribers({
       title: "新規登録",
       body: `${guestName} さんが登録しました。`,
-      url: "/admin"
+      url: "/admin?notify=1"
     });
   } catch (e) {
     console.error("[join] web push to admins", e);

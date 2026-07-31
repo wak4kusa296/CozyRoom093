@@ -41,16 +41,50 @@ self.addEventListener("notificationclick", (event) => {
   } catch {
     url = new URL("/room", self.location.origin).href;
   }
+
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
+    (async () => {
+      const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const sameOrigin = clientList.filter((client) => {
+        try {
+          return new URL(client.url).origin === self.location.origin;
+        } catch {
+          return false;
+        }
+      });
+
+      const already = sameOrigin.find((client) => client.url === url);
+      if (already) {
+        await already.focus();
+        return;
+      }
+
+      /*
+       * 既存ウィンドウは focus だけだと元のページ（PWA の start_url など）のまま残る。
+       * navigate() が使えない環境（iOS 等）は postMessage でクライアント側に遷移させる。
+       */
+      for (const client of sameOrigin) {
+        try {
+          if (client.navigate) {
+            const navigated = await client.navigate(url);
+            if (navigated) {
+              await navigated.focus();
+              return;
+            }
+          }
+        } catch {
+          /* navigate() 不可 */
+        }
         if ("focus" in client) {
-          return client.focus();
+          await client.focus();
+          client.postMessage({ type: "notification-navigate", url });
+          return;
         }
       }
+
       if (self.clients.openWindow) {
-        return self.clients.openWindow(url);
+        await self.clients.openWindow(url);
       }
-    })
+    })()
   );
 });

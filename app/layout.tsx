@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { PwaInstallBanner } from "@/app/components/pwa-install-banner";
+import { PushNavigationListener } from "@/app/components/push-navigation-listener";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <PushNavigationListener />
         <PwaInstallBanner />
       </body>
     </html>

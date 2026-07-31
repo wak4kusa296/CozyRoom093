@@ -69,6 +69,17 @@ export function AdminNotificationBell() {
     setMounted(true);
   }, []);
 
+  /** 通知タップで /admin?notify=1 に来たときは、お知らせを開いた状態で見せる */
+  useEffect(() => {
+    if (gate !== "admin") return;
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("notify") !== "1") return;
+    setOpen(true);
+    url.searchParams.delete("notify");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [gate]);
+
   const refreshPushPermitVisibility = useCallback(async () => {
     setPushPermitVisible(await shouldShowPermitPushButton());
   }, []);

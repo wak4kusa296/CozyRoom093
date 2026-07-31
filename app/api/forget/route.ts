@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     await sendWebPushToAdminSubscribers({
       title: "秘密の言葉の問い合わせ",
       body: "新しい問い合わせが届きました。",
-      url: "/admin"
+      url: "/admin?notify=1"
     });
   } catch (e) {
     console.error("[forget] web push to admins", e);

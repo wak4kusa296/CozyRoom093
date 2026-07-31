@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import nodemailer from "nodemailer";
 
 function parsePort(value: string | undefined, fallback: number) {
@@ -23,6 +24,47 @@ export function isSmtpConfigured(): boolean {
   return Boolean(process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim());
 }
 
+const SENDER_NAME = "誰も知らない部屋";
+
+/** "Name <a@b.c>" でも "a@b.c" でも、アドレス部分だけ取り出す */
+function extractAddress(value: string): string {
+  const m = value.match(/<([^>]+)>/);
+  return (m ? m[1] : value).trim();
+}
+
+function addressDomain(value: string): string {
+  const at = extractAddress(value).lastIndexOf("@");
+  return at === -1 ? "" : extractAddress(value).slice(at + 1);
+}
+
+/** 差出人名がなければ付ける（名前なしの生アドレスは迷惑メール判定されやすい） */
+function buildFromHeader(rawFrom: string): string {
+  if (rawFrom.includes("<")) return rawFrom;
+  return `"${SENDER_NAME}" <${rawFrom}>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** 本文中の URL だけリンクにした、素朴な HTML 版を作る */
+function textToHtml(text: string): string {
+  const body = escapeHtml(text).replace(
+    /https?:\/\/[^\s<]+/g,
+    (url) => `<a href="${url}">${url}</a>`
+  );
+  return [
+    '<!doctype html><html lang="ja"><body>',
+    '<div style="font-family:sans-serif;font-size:15px;line-height:1.7;color:#222;white-space:pre-wrap;">',
+    body,
+    "</div></body></html>"
+  ].join("");
+}
+
 export async function sendTransactionalEmail(opts: { to: string; subject: string; text: string }) {
   if (!isSmtpConfigured()) {
     throw new Error("SMTP is not configured");
@@ -36,6 +78,9 @@ export async function sendTransactionalEmail(opts: { to: string; subject: string
     port === 465;
 
   const relayNoAuth = isRelayNoAuth();
+  const rawFrom = process.env.SMTP_FROM!.trim();
+  const fromAddress = extractAddress(rawFrom);
+  const fromDomain = addressDomain(rawFrom);
 
   const transporter = nodemailer.createTransport({
     host,
@@ -53,9 +98,21 @@ export async function sendTransactionalEmail(opts: { to: string; subject: string
   });
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM!.trim(),
+    from: buildFromHeader(rawFrom),
+    sender: fromAddress,
+    replyTo: process.env.SMTP_REPLY_TO?.trim() || fromAddress,
+    /* Return-Path を From と揃えて SPF を通す */
+    envelope: { from: fromAddress, to: extractAddress(opts.to) },
     to: opts.to,
     subject: opts.subject,
-    text: opts.text
+    text: opts.text,
+    html: textToHtml(opts.text),
+    /* Message-ID は既定だと送信ホスト名になる。From ドメインに揃えると DMARC 評価で有利。 */
+    ...(fromDomain ? { messageId: `<${randomUUID()}@${fromDomain}>` } : {}),
+    headers: {
+      /* 自動送信の控えであることを明示（一斉配信と区別されやすくなる） */
+      "Auto-Submitted": "auto-generated",
+      "X-Auto-Response-Suppress": "All"
+    }
   });
 }

@@ -23,6 +23,8 @@ type SuccessState = {
 
 export function JoinPageClient() {
   const [gatePhrase, setGatePhrase] = useState("");
+  const [gateUnlocked, setGateUnlocked] = useState(false);
+  const [checkingGate, setCheckingGate] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [memo, setMemo] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -93,10 +95,65 @@ export function JoinPageClient() {
     }
   }
 
+  async function onVerifyGate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+
+    if (!validateGatePhrase(gatePhrase)) {
+      setFormError(HANDWRITTEN_PASSWORD_INVALID_MESSAGE);
+      return;
+    }
+    if (!gatePhrase.trim()) {
+      setFormError("手書きのパスワードを入力してください。");
+      return;
+    }
+
+    setCheckingGate(true);
+    try {
+      const res = await fetch("/api/join/check-gate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gatePhrase })
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+      };
+
+      if (res.status === 400 && data.error === "invalid_gate_format") {
+        const msg = data.message?.trim() || HANDWRITTEN_PASSWORD_INVALID_MESSAGE;
+        setGateError(msg);
+        setFormError(msg);
+        return;
+      }
+      if (res.status === 403 || data.error === "invalid_gate") {
+        const msg = data.message?.trim() || "手書きのパスワードが違うか、無効になっています。";
+        setGateError(msg);
+        setFormError(msg);
+        return;
+      }
+      if (!res.ok || !data.ok) {
+        setFormError("確認できませんでした。もう一度お試しください。");
+        return;
+      }
+
+      setGateUnlocked(true);
+      setGateError(null);
+      setFormError(null);
+    } finally {
+      setCheckingGate(false);
+    }
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
 
+    if (!gateUnlocked) {
+      setFormError("先に手書きのパスワードを確認してください。");
+      return;
+    }
     if (!validateGatePhrase(gatePhrase)) {
       setFormError(HANDWRITTEN_PASSWORD_INVALID_MESSAGE);
       return;
@@ -152,10 +209,12 @@ export function JoinPageClient() {
         const msg = data.message?.trim() || HANDWRITTEN_PASSWORD_INVALID_MESSAGE;
         setGateError(msg);
         setFormError(msg);
+        setGateUnlocked(false);
         return;
       }
       if (res.status === 403 || data.error === "invalid_gate") {
         setFormError("手書きのパスワードが違うか、無効になっています。");
+        setGateUnlocked(false);
         return;
       }
       if (res.status === 400 && data.error === "invalid_email") {
@@ -211,115 +270,136 @@ export function JoinPageClient() {
     );
   }
 
+  const busy = submitting || checkingGate;
+
   return (
     <main className="landing">
-      {submitting ? <AppLoadingOverlay label="登録中" /> : null}
+      {busy ? <AppLoadingOverlay label={checkingGate ? "確認中" : "登録中"} /> : null}
       <section className="card">
         <RoomBrand variant="landing" />
         <h1 className="sr-only">新規登録</h1>
         <p className="lead">この部屋への新規登録</p>
-        <p className="meta">
-          紙に書かれた手書きのパスワードと、あなたが決める秘密の言葉を入力してください。呼び名と場面は管理人の確認用で、他のゲストには見えません。メールアドレスは控えの送付にだけ使い、すぐ破棄します。
-        </p>
+        {!gateUnlocked ? (
+          <p className="meta">紙に書かれた手書きのパスワードを入力してください。</p>
+        ) : (
+          <p className="meta">
+            呼び名と場面は管理人の確認用で、他のゲストには見えません。メールアドレスは控えの送付にだけ使い、すぐ破棄します。あなたが決める秘密の言葉で、あとから入室できます。
+          </p>
+        )}
 
-        <form onSubmit={onSubmit} className="stack recovery-modal-form">
-          <label className="recovery-modal-label">
-            手書きのパスワード
-            <input
-              value={gatePhrase}
-              onChange={(e) => {
-                setGatePhrase(e.target.value);
-                setGateError(null);
-              }}
-              onBlur={() => {
-                validateGatePhrase(gatePhrase);
-              }}
-              required
-              disabled={submitting}
-              autoComplete="off"
-              inputMode="text"
-              lang="en"
-              spellCheck={false}
-              aria-invalid={gateError ? true : undefined}
-              aria-describedby={gateError ? "join-gate-error" : undefined}
-            />
-          </label>
-          {gateError ? (
-            <p id="join-gate-error" className="join-field-error" role="alert">
-              {gateError}
-            </p>
-          ) : null}
-          <label className="recovery-modal-label">
-            管理人が分かるであろう自分の呼び名
-            <input
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              required
-              disabled={submitting}
-              autoComplete="nickname"
-              lang="ja"
-            />
-          </label>
-          <label className="recovery-modal-label">
-            管理人と一番関わった場面
-            <textarea
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              required
-              disabled={submitting}
-              rows={3}
-              className="recovery-modal-textarea"
-            />
-          </label>
-          <label className="recovery-modal-label">
-            控えを受け取るメールアドレス（管理者は保存しません）
-            <input
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              required
-              disabled={submitting}
-              autoComplete="email"
-              inputMode="email"
-            />
-          </label>
-          <label className="recovery-modal-label">
-            希望する秘密の言葉
-            <span id="join-phrase-hint" className="join-field-hint">
-              {SECRET_PHRASE_RULE_HINT}
-            </span>
-            <input
-              value={phrase}
-              onChange={(e) => {
-                const next = e.target.value;
-                setPhrase(next);
-                syncSecretPhraseWhitespaceError(next);
-              }}
-              onBlur={(e) => void checkPhraseAvailability(e.target.value)}
-              required
-              disabled={submitting}
-              autoComplete="off"
-              aria-invalid={phraseError ? true : undefined}
-              aria-describedby={phraseError ? "join-phrase-error" : "join-phrase-hint"}
-            />
-          </label>
-          {checkingPhrase ? <p className="meta join-field-hint">秘密の言葉を確認しています…</p> : null}
-          {phraseError ? (
-            <p id="join-phrase-error" className="join-field-error" role="alert">
-              {phraseError}
-            </p>
-          ) : null}
+        {!gateUnlocked ? (
+          <form onSubmit={onVerifyGate} className="stack recovery-modal-form">
+            <label className="recovery-modal-label">
+              手書きのパスワード
+              <input
+                value={gatePhrase}
+                onChange={(e) => {
+                  setGatePhrase(e.target.value);
+                  setGateError(null);
+                  setFormError(null);
+                }}
+                onBlur={() => {
+                  validateGatePhrase(gatePhrase);
+                }}
+                required
+                disabled={busy}
+                autoComplete="off"
+                inputMode="text"
+                lang="en"
+                spellCheck={false}
+                aria-invalid={gateError ? true : undefined}
+                aria-describedby={gateError ? "join-gate-error" : undefined}
+              />
+            </label>
+            {gateError ? (
+              <p id="join-gate-error" className="join-field-error" role="alert">
+                {gateError}
+              </p>
+            ) : null}
 
-          <div className="recovery-modal-actions">
-            <button
-              type="submit"
-              className="recovery-modal-submit"
-              disabled={submitting || Boolean(phraseError) || Boolean(gateError)}
-            >
-              {submitting ? "登録中…" : "登録する"}
-            </button>
-          </div>
-        </form>
+            <div className="recovery-modal-actions">
+              <button type="submit" className="recovery-modal-submit" disabled={busy || Boolean(gateError)}>
+                {checkingGate ? "確認中…" : "次へ"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={onSubmit} className="stack recovery-modal-form">
+            <p className="meta join-gate-confirmed" role="status">
+              手書きのパスワードを確認しました。続けて登録内容を入力してください。
+            </p>
+            <label className="recovery-modal-label">
+              管理人が分かるであろう自分の呼び名
+              <input
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                required
+                disabled={busy}
+                autoComplete="nickname"
+                lang="ja"
+              />
+            </label>
+            <label className="recovery-modal-label">
+              管理人と一番関わった場面
+              <textarea
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                required
+                disabled={busy}
+                rows={3}
+                className="recovery-modal-textarea"
+              />
+            </label>
+            <label className="recovery-modal-label">
+              控えを受け取るメールアドレス（管理者は保存しません）
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                required
+                disabled={busy}
+                autoComplete="email"
+                inputMode="email"
+              />
+            </label>
+            <label className="recovery-modal-label">
+              希望する秘密の言葉
+              <span id="join-phrase-hint" className="join-field-hint">
+                {SECRET_PHRASE_RULE_HINT}
+              </span>
+              <input
+                value={phrase}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPhrase(next);
+                  syncSecretPhraseWhitespaceError(next);
+                }}
+                onBlur={(e) => void checkPhraseAvailability(e.target.value)}
+                required
+                disabled={busy}
+                autoComplete="off"
+                aria-invalid={phraseError ? true : undefined}
+                aria-describedby={phraseError ? "join-phrase-error" : "join-phrase-hint"}
+              />
+            </label>
+            {checkingPhrase ? <p className="meta join-field-hint">秘密の言葉を確認しています…</p> : null}
+            {phraseError ? (
+              <p id="join-phrase-error" className="join-field-error" role="alert">
+                {phraseError}
+              </p>
+            ) : null}
+
+            <div className="recovery-modal-actions">
+              <button
+                type="submit"
+                className="recovery-modal-submit"
+                disabled={busy || Boolean(phraseError)}
+              >
+                {submitting ? "登録中…" : "登録する"}
+              </button>
+            </div>
+          </form>
+        )}
 
         {formError ? (
           <p className="message" role="alert">
